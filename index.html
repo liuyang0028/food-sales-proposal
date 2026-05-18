@@ -1509,83 +1509,220 @@ function parseStoreInfo(text) {
   }
 }
 
-// ==================== 流量数据解析 ====================
+// ==================== 流量数据解析（v2 增强版）====================
+// 支持：行识别、列识别、OCR容错、缺失值"--"、数值跨行
 function parseTrafficData(text) {
-  // 解析OCR识别的流量数据为表格 —— 固定10个维度指标（高德商户后台）
-  var lines = text.split('\n').map(function(l) { return l.replace(/\s+/g, ' ').trim(); }).filter(function(l) { return l; });
+  var rawLines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+  // 同时保留"合并空格"和"原始空格"两个版本，用于不同策略
+  var lines = rawLines.map(function(l) { return l.replace(/\s+/g, ' ').trim(); });
+  var mergedLines = lines.map(function(l) {
+    return l.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
+            .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+  });
 
-  // 固定维度指标列表（按高德后台实际展示顺序）
   var METRIC_LABELS = ['曝光量', '搜索量', '泛搜量', '精搜量', '点击量', '曝光-点击转化率', '导航量', '点击-导航转化率', '来电量', '点击-来电转化率'];
-
-  // 存放提取结果
   var extracted = {};
 
-  // 核心策略：逐行扫描，找到包含指标名的行，然后从该行及后续行中提取数值
-  // 高德后台截图OCR的典型格式：每个指标独占一行或与数值同行
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    // 合并中文字间OCR空格
-    var merged = line.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
-                     .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+  // ========== 辅助：指标名匹配（带OCR容错）==========
+  function matchMetricLabel(line) {
+    // OCR常见错误映射
+    var norm = line
+      .replace(/暴光/g, '曝光').replace(/爆光/g, '曝光')
+      .replace(/点去/g, '点击').replace(/点壹/g, '点击')
+      .replace(/导般/g, '导航').replace(/导肮/g, '导航')
+      .replace(/搜素/g, '搜索').replace(/搜尋/g, '搜索')
+      .replace(/电話/g, '来电').replace(/来電/g, '来电')
+      .replace(/转货率/g, '转化率').replace(/转亿率/g, '转化率')
+      .replace(/率\s*$/g, '率'); // 去掉尾部空格导致的匹配失败
 
-    // 匹配当前行对应哪个指标
-    var matchedLabel = '';
-    if (/曝光[·\-\s]*点击[·\-\s]*转化/.test(merged)) matchedLabel = '曝光-点击转化率';
-    else if (/点击[·\-\s]*导航[·\-\s]*转化/.test(merged)) matchedLabel = '点击-导航转化率';
-    else if (/点击[·\-\s]*来电[·\-\s]*转化/.test(merged)) matchedLabel = '点击-来电转化率';
-    else if (/泛搜[量索]?/.test(merged)) matchedLabel = '泛搜量';
-    else if (/精搜[量索]?/.test(merged)) matchedLabel = '精搜量';
-    else if (/曝光[量]?/.test(merged) && !/转化|点击/.test(merged)) matchedLabel = '曝光量';
-    else if (/搜索[量]?/.test(merged) && !/泛|精/.test(merged)) matchedLabel = '搜索量';
-    else if (/点击[量数]?/.test(merged) && !/转化|导航|来电|曝光/.test(merged)) matchedLabel = '点击量';
-    else if (/导航[量数]?/.test(merged) && !/转化|点击/.test(merged)) matchedLabel = '导航量';
-    else if (/来电[量数]?/.test(merged) && !/转化|点击/.test(merged)) matchedLabel = '来电量';
+    if (/曝光[·\-\s]*点击[·\-\s]*转化/.test(norm)) return '曝光-点击转化率';
+    if (/点击[·\-\s]*导航[·\-\s]*转化/.test(norm)) return '点击-导航转化率';
+    if (/点击[·\-\s]*来电[·\-\s]*转化/.test(norm)) return '点击-来电转化率';
+    if (/泛搜[量索]?/.test(norm)) return '泛搜量';
+    if (/精搜[量索]?/.test(norm)) return '精搜量';
+    if (/曝光[量]?/.test(norm) && !/转化|点击/.test(norm)) return '曝光量';
+    if (/搜索[量]?/.test(norm) && !/泛|精/.test(norm)) return '搜索量';
+    if (/点击[量数]?/.test(norm) && !/转化|导航|来电|曝光/.test(norm)) return '点击量';
+    if (/导航[量数]?/.test(norm) && !/转化|点击/.test(norm)) return '导航量';
+    if (/来电[量数]?/.test(norm) && !/转化|点击/.test(norm)) return '来电量';
+    return '';
+  }
 
-    if (!matchedLabel || extracted[matchedLabel]) continue;
+  // ========== 辅助：提取数值（含"--"缺失值）==========
+  function extractNumbers(line) {
+    // 去除日期格式干扰
+    var cleaned = line
+      .replace(/20[2-3]\d[.\-\/]\d{1,2}[.\-\/]\d{1,2}/g, ' ')
+      .replace(/20[2-3]\d[.\-\/]\d{1,2}/g, ' ')
+      .replace(/20[2-3]\d/g, ' ')
+      .replace(/\d{1,2}[年月日号天]/g, ' ')
+      .replace(/近\d+/g, ' ');
 
-    // 从当前行提取数值
-    // 去除日期格式干扰（如 2025.04.09、2025-05-09、04月09日、近30天）
-    var numStr = line.replace(/20[2-3]\d[.\-\/]\d{1,2}[.\-\/]\d{1,2}/g, '')
-                     .replace(/20[2-3]\d[.\-\/]\d{1,2}/g, '')
-                     .replace(/20[2-3]\d/g, '')
-                     .replace(/\d{1,2}[年月日号天]/g, '')
-                     .replace(/近\d+/g, '');
-    var nums = numStr.match(/[\d,.]+[万亿%]?/g);
-    // 过滤掉孤立的零前缀数字（日期残留如"09"、"04"）
-    if (nums) {
-      nums = nums.filter(function(n) {
-        if (/[万亿%,.]/.test(n)) return true;
-        if (/^0\d$/.test(n)) return false;
-        return true;
-      });
+    var tokens = cleaned.split(/\s+/);
+    var result = [];
+    for (var i = 0; i < tokens.length; i++) {
+      var t = tokens[i].trim();
+      if (!t) continue;
+      // 缺失值
+      if (t === '--' || t === '—' || t === '-' || t === '一一') {
+        result.push('--');
+        continue;
+      }
+      // 数值+单位（万、%、亿）
+      if (/^[\d,.]+[万亿%]?$/.test(t)) {
+        if (/^0\d$/.test(t)) continue; // 过滤日期残留如"09"
+        if (!/[\d]/.test(t)) continue; // 过滤纯标点
+        result.push(t);
+      }
+    }
+    return result;
+  }
+
+  // ========== 策略A：行识别（改进版）==========
+  // 先定位所有指标名在文本中的位置
+  var metricPositions = [];
+  for (var i = 0; i < mergedLines.length; i++) {
+    var label = matchMetricLabel(mergedLines[i]);
+    if (label) {
+      // 去重：同一指标只取第一次出现的位置
+      var already = false;
+      for (var j = 0; j < metricPositions.length; j++) {
+        if (metricPositions[j].label === label) { already = true; break; }
+      }
+      if (!already) metricPositions.push({ index: i, label: label });
+    }
+  }
+
+  // 对每个指标，在其位置到下一个指标位置之间提取数值
+  for (var mi = 0; mi < metricPositions.length; mi++) {
+    var mp = metricPositions[mi];
+    if (extracted[mp.label]) continue;
+
+    var startIdx = mp.index;
+    var endIdx = (mi + 1 < metricPositions.length) ? metricPositions[mi + 1].index : lines.length;
+    var allNums = [];
+
+    // 在指标所在行及后续行中提取数值，直到凑够3个或遇到下一个指标
+    for (var j = startIdx; j < endIdx && allNums.length < 3; j++) {
+      var lineNums = extractNumbers(lines[j]);
+      for (var k = 0; k < lineNums.length && allNums.length < 3; k++) {
+        allNums.push(lineNums[k]);
+      }
     }
 
-    if (nums && nums.length >= 3) {
-      extracted[matchedLabel] = { mine: nums[0], nearby: nums[1], city: nums[2] };
-    } else if (nums && nums.length === 2) {
-      extracted[matchedLabel] = { mine: nums[0], nearby: nums[1], city: '-' };
-    } else if (nums && nums.length === 1) {
-      extracted[matchedLabel] = { mine: nums[0], nearby: '-', city: '-' };
-    } else {
-      // 当前行没数值，尝试在下一行找（OCR可能把数值断到下一行）
-      if (i + 1 < lines.length) {
-        var nextLine = lines[i + 1];
-        // 下一行如果包含指标关键词则跳过（是另一个指标，不是数值行）
-        if (!/[曝光搜索点击导航来电泛精]/.test(nextLine.replace(/[\d,.%万亿\s]/g, ''))) {
-          var nextNums = nextLine.match(/[\d,.]+[万亿%]?/g);
-          if (nextNums && nextNums.length >= 3) {
-            extracted[matchedLabel] = { mine: nextNums[0], nearby: nextNums[1], city: nextNums[2] };
-            i++; // 跳过已消费的数值行
-          } else if (nextNums && nextNums.length >= 1) {
-            extracted[matchedLabel] = { mine: nextNums[0], nearby: nextNums[1] || '-', city: nextNums[2] || '-' };
-            i++;
+    if (allNums.length > 0) {
+      extracted[mp.label] = {
+        mine: allNums[0],
+        nearby: allNums[1] || '-',
+        city: allNums[2] || '-'
+      };
+    }
+  }
+
+  // ========== 策略B：列识别（新增）==========
+  // 检测特征：出现"本店 周边 同城"表头，或某行以"本店/周边/同城"开头且带多个数值
+  function tryColumnMode() {
+    var colResult = {};
+    var headerIndex = -1;
+    // 找表头行
+    for (var i = 0; i < mergedLines.length; i++) {
+      if (/本店.*周边.*同城|周边.*本店.*同城|同城.*周边.*本店/.test(mergedLines[i])) {
+        headerIndex = i; break;
+      }
+    }
+    // 如果没找到表头，找以"本店"开头的数据行
+    var dataRows = [];
+    if (headerIndex < 0) {
+      for (var i = 0; i < lines.length; i++) {
+        if (/^(本店|周边|同城)\s/.test(lines[i])) {
+          dataRows.push({ index: i, type: RegExp.$1, line: lines[i] });
+        }
+      }
+    }
+
+    // 列模式A：有表头行，后面紧跟指标行
+    if (headerIndex >= 0 && headerIndex + 1 < lines.length) {
+      // 指标应该在表头之前或表头之后的行中
+      for (var i = headerIndex + 1; i < lines.length; i++) {
+        var label = matchMetricLabel(mergedLines[i]);
+        if (!label) continue;
+        if (colResult[label]) continue;
+        var nums = extractNumbers(lines[i]);
+        if (nums.length >= 1) {
+          colResult[label] = { mine: nums[0], nearby: nums[1] || '-', city: nums[2] || '-' };
+        }
+      }
+    }
+
+    // 列模式B：有 "本店/周边/同城" 数据行，每行一串数值
+    // 此时需要先把所有数值按列组织，再找指标名对应
+    if (Object.keys(colResult).length < 3 && dataRows.length >= 2) {
+      // 收集每行的数值
+      var rowValues = [];
+      for (var i = 0; i < dataRows.length; i++) {
+        var nums = extractNumbers(dataRows[i].line);
+        if (nums.length >= 3) rowValues.push(nums);
+      }
+      if (rowValues.length >= 2) {
+        // 找指标名列表（在数据行之前的行中，按顺序出现）
+        var firstDataIdx = dataRows[0].index;
+        var metricList = [];
+        for (var i = 0; i < firstDataIdx; i++) {
+          var label = matchMetricLabel(mergedLines[i]);
+          if (label && metricList.indexOf(label) < 0) metricList.push(label);
+        }
+        // 如果指标名列表长度和数值列长度一致，按顺序对应
+        if (metricList.length > 0 && rowValues.length >= 2) {
+          for (var ci = 0; ci < metricList.length && ci < rowValues[0].length; ci++) {
+            if (colResult[metricList[ci]]) continue;
+            colResult[metricList[ci]] = {
+              mine: rowValues[0][ci] || '-',
+              nearby: rowValues[1] ? (rowValues[1][ci] || '-') : '-',
+              city: rowValues[2] ? (rowValues[2][ci] || '-') : '-'
+            };
           }
         }
       }
     }
+    return colResult;
   }
 
-  // 组装固定10行数据（未提取到的显示"-"）
+  if (Object.keys(extracted).length < 5) {
+    var colExtracted = tryColumnMode();
+    for (var key in colExtracted) {
+      if (!extracted[key]) extracted[key] = colExtracted[key];
+    }
+  }
+
+  // ========== 策略C：纯数值兜底（当指标名识别失败时）==========
+  // 如果行+列都只提取到极少数指标，尝试从整个文本中暴力提取
+  if (Object.keys(extracted).length < 3) {
+    // 在文本中找 "线上流量数据" 标签之后的所有数值
+    var trafficStart = -1;
+    for (var i = 0; i < mergedLines.length; i++) {
+      if (/线上流量|流量数据/.test(mergedLines[i])) { trafficStart = i; break; }
+    }
+    var allNums = [];
+    var start = trafficStart >= 0 ? trafficStart : 0;
+    for (var i = start; i < lines.length; i++) {
+      var nums = extractNumbers(lines[i]);
+      for (var j = 0; j < nums.length; j++) allNums.push(nums[j]);
+    }
+    // 如果数值总数 ≈ 10×3 = 30 个，说明是完整表格，按顺序硬分配
+    if (allNums.length >= 20) {
+      for (var i = 0; i < METRIC_LABELS.length; i++) {
+        if (extracted[METRIC_LABELS[i]]) continue;
+        var base = i * 3;
+        extracted[METRIC_LABELS[i]] = {
+          mine: allNums[base] || '-',
+          nearby: allNums[base + 1] || '-',
+          city: allNums[base + 2] || '-'
+        };
+      }
+    }
+  }
+
+  // 组装固定10行数据
   var data = METRIC_LABELS.map(function(label) {
     var vals = extracted[label];
     return {
