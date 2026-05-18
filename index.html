@@ -1,0 +1,3204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美食商业化智能提案</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.app-header {
+  background: #fff;
+  padding: 14px 30px;
+  border-bottom: 3px solid #3b82f6;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.app-header h1 { font-size: 22px; color: #1e293b; }
+.app-header .subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.header-badge { background: #3b82f6; color: #fff; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+
+/* Main Layout */
+.main-container { display: flex; height: calc(100vh - 58px); }
+
+/* Left Panel */
+.left-panel {
+  width: 420px;
+  min-width: 420px;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  padding: 16px;
+  background: #fff;
+}
+.left-panel::-webkit-scrollbar { width: 5px; }
+.left-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* Right Panel */
+.right-panel { flex: 1; overflow-y: auto; padding: 24px 30px; background: #f8fafc; }
+.right-panel::-webkit-scrollbar { width: 5px; }
+.right-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* Screenshot Drop Zone */
+.drop-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 14px;
+  transition: all 0.3s;
+  cursor: pointer;
+  min-height: 100px;
+  position: relative;
+  background: #f8fafc;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: #3b82f6; background: rgba(59,130,246,0.04); }
+.drop-zone .hint { font-size: 13px; color: #64748b; }
+.drop-zone .hint b { color: #3b82f6; }
+.drop-zone .preview-imgs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+.drop-zone .preview-imgs img {
+  max-width: 180px;
+  max-height: 120px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  object-fit: contain;
+  background: #fff;
+}
+.drop-zone .clear-imgs {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  display: none;
+}
+/* 单张图片容器 */
+.img-thumb-wrap {
+  position: relative;
+  display: inline-block;
+  cursor: zoom-in;
+  flex-shrink: 0;
+}
+.img-thumb-wrap:hover img {
+  opacity: 0.82;
+  border-color: #3b82f6;
+}
+.img-del-btn {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  background: #ef4444;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  display: none;
+  padding: 0;
+  z-index: 10;
+  font-weight: bold;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.img-thumb-wrap:hover .img-del-btn { display: block; }
+.img-zoom-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.52);
+  color: #fff;
+  font-size: 10px;
+  text-align: center;
+  padding: 3px 0;
+  border-radius: 0 0 6px 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.img-thumb-wrap:hover .img-zoom-hint { opacity: 1; }
+/* 灯箱 */
+#imgLightbox {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+#imgLightbox.open { display: flex; }
+#imgLightbox img {
+  max-width: 92vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  cursor: default;
+}
+.lb-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  color: #fff;
+  font-size: 32px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-weight: bold;
+  opacity: 0.75;
+  line-height: 1;
+}
+.lb-close:hover { opacity: 1; }
+.lb-seq {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* Form Sections */
+.form-section {
+  background: #fff;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+}
+.form-section-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #3b82f6;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid .tri { grid-template-columns: 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 3px; }
+.form-group label { font-size: 11px; color: #475569; font-weight: bold; }
+.form-group label .req { color: #ef4444; }
+.form-group label .unit { color: #94a3b8; font-weight: normal; }
+.form-group input, .form-group select {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #1e293b;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.form-group select { cursor: pointer; }
+.form-group select option { background: #fff; }
+
+/* Traffic data table */
+.traffic-table-area { border-radius: 8px; overflow: hidden; margin-top: 2px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.traffic-table-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; color: #94a3b8; text-align: center; }
+.traffic-table-placeholder p { margin: 4px 0; font-size: 12px; }
+.traffic-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.traffic-table th { background: #f1f5f9; padding: 6px 8px; text-align: center; font-weight: 600; color: #475569; border: 1px solid #e2e8f0; }
+.traffic-table td { padding: 5px 8px; text-align: center; border: 1px solid #e2e8f0; color: #334155; }
+.traffic-table td:first-child { text-align: left; font-weight: 500; color: #1e293b; background: #f8fafc; }
+.traffic-table .ratio { font-size: 10px; color: #64748b; display: block; }
+.traffic-table .ratio.up { color: #16a34a; }
+.traffic-table .ratio.down { color: #dc2626; }
+
+.quick-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.quick-chip {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.quick-chip:hover { border-color: #3b82f6; color: #3b82f6; }
+
+/* Checkbox Group */
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 5px; }
+.checkbox-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 4px 9px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  color: #475569;
+}
+.checkbox-item:hover { border-color: #94a3b8; }
+.checkbox-item.checked { background: rgba(59,130,246,0.08); border-color: #3b82f6; color: #2563eb; }
+
+/* Buttons */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  margin-top: 8px;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.35); }
+.btn-row { display: flex; gap: 8px; margin-top: 8px; }
+.btn-secondary {
+  flex: 1; padding: 8px;
+  background: rgba(59,130,246,0.08); color: #3b82f6;
+  border: 1px solid #3b82f6; border-radius: 8px;
+  font-size: 12px; font-weight: bold; cursor: pointer;
+}
+.btn-secondary:hover { background: rgba(59,130,246,0.15); }
+.btn-clear {
+  flex: 1; padding: 8px;
+  background: #f8fafc; color: #64748b;
+  border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 12px; cursor: pointer;
+}
+
+/* Right Panel */
+.output-placeholder {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 60%; color: #94a3b8; text-align: center;
+}
+.output-placeholder .big-icon { font-size: 60px; margin-bottom: 16px; opacity: 0.5; }
+
+/* Script Tab */
+.script-section { margin-bottom: 16px; }
+.script-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.script-header .num {
+  background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: bold; flex-shrink: 0;
+}
+.script-header h3 { font-size: 14px; color: #1d4ed8; font-weight: bold; }
+.script-body {
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 10px; padding: 14px 16px;
+  font-size: 13px; line-height: 1.8; color: #334155;
+}
+.script-body .hl { color: #d97706; font-weight: bold; }
+.script-body .alt {
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0;
+  color: #64748b; font-size: 12px;
+}
+.script-body .alt-label { font-size: 11px; color: #2563eb; font-weight: bold; margin-bottom: 3px; }
+.btn-copy-all {
+  display: flex; align-items: center; gap: 6px;
+  margin: 16px 0; padding: 11px 18px;
+  background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer;
+  transition: transform 0.1s;
+}
+.btn-copy-all:hover { transform: translateY(-1px); }
+
+/* Pricing Tab */
+.pricing-cards { display: flex; gap: 12px; margin-bottom: 20px; }
+.pricing-card {
+  flex: 1; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center;
+  transition: border-color 0.2s;
+}
+.pricing-card.recommended { border-color: #3b82f6; background: rgba(59,130,246,0.03); box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+.pricing-card .pc-badge {
+  font-size: 11px; background: #3b82f6; color: #fff;
+  padding: 2px 10px; border-radius: 10px; display: inline-block; margin-bottom: 8px;
+}
+.pricing-card h4 { font-size: 14px; color: #1e293b; margin-bottom: 4px; }
+.pricing-card .price { font-size: 28px; font-weight: 800; color: #2563eb; }
+.pricing-card .price-unit { font-size: 12px; color: #64748b; }
+.pricing-card ul {
+  list-style: none; text-align: left; margin-top: 12px;
+  font-size: 12px; color: #475569; line-height: 1.8;
+}
+.pricing-card ul li::before { content: '✓ '; color: #10b981; font-weight: bold; }
+
+/* ROI Table */
+.roi-section { margin-top: 20px; }
+.roi-section h3 { font-size: 15px; color: #d97706; margin-bottom: 12px; }
+.roi-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.roi-table th {
+  background: #eff6ff; color: #1d4ed8;
+  padding: 8px 10px; text-align: left; font-weight: bold;
+  border: 1px solid #e2e8f0;
+}
+.roi-table td {
+  padding: 8px 10px; border: 1px solid #e2e8f0; color: #475569;
+}
+.roi-table td strong { color: #d97706; }
+
+/* Data Summary */
+.data-summary {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+}
+.data-summary h3 { font-size: 14px; color: #1d4ed8; margin-bottom: 10px; }
+
+/* Objection Tab */
+.objection-card {
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+}
+.objection-card.highlighted { border-color: #3b82f6; }
+.objection-header {
+  padding: 10px 14px; background: #f8fafc;
+  display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+}
+.objection-header h4 { font-size: 13px; color: #1d4ed8; font-weight: bold; }
+.objection-header .tag {
+  font-size: 10px; background: #dbeafe; color: #1d4ed8;
+  padding: 2px 8px; border-radius: 10px;
+}
+.objection-body { padding: 12px 14px; }
+.objection-step { margin-bottom: 8px; }
+.objection-step .step-label { font-size: 11px; color: #2563eb; font-weight: bold; margin-bottom: 2px; }
+.objection-step p { font-size: 12px; color: #334155; line-height: 1.6; }
+.objection-step p .hl { color: #d97706; font-weight: bold; }
+
+/* Motto Bar */
+.motto-bar {
+  margin-top: 20px; padding: 12px 16px;
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+  border: 1px solid #bfdbfe; border-radius: 10px; text-align: center;
+}
+.motto-bar .motto-text { font-size: 16px; font-weight: bold; color: #1d4ed8; letter-spacing: 4px; }
+.motto-bar .motto-sub { font-size: 11px; color: #64748b; margin-top: 3px; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 70px; right: 20px;
+  padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: bold;
+  z-index: 9999; transform: translateX(120%); transition: transform 0.3s;
+}
+.toast.show { transform: translateX(0); }
+.toast.success { background: #10b981; color: #fff; }
+.toast.error { background: #ef4444; color: #fff; }
+.toast.info { background: #3b82f6; color: #fff; }
+
+/* OCR Status */
+.ocr-status {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+.ocr-status.show { display: flex; }
+.ocr-status.loading { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.ocr-status.done { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.ocr-status.fail { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid #bfdbfe;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.ocr-filled { border-color: #10b981 !important; background: #f0fdf4 !important; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 200; display: none;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  width: 500px; max-height: 70vh; overflow-y: auto; padding: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.modal h3 { font-size: 16px; color: #1e293b; margin-bottom: 14px; }
+.history-item {
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 8px; padding: 10px; margin-bottom: 8px;
+  cursor: pointer; transition: border-color 0.2s;
+}
+.history-item:hover { border-color: #3b82f6; }
+.history-item .hi-name { font-size: 13px; color: #1e293b; font-weight: bold; }
+.history-item .hi-meta { font-size: 11px; color: #64748b; margin-top: 3px; }
+
+/* ===== Mode Toggle ===== */
+.mode-toggle {
+  display: flex; gap: 4px; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 10px; padding: 4px;
+  margin-bottom: 16px; position: sticky; top: 0; z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.mode-btn {
+  flex: 1; padding: 9px 14px; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: bold; cursor: pointer;
+  background: transparent; color: #64748b; transition: all 0.2s;
+}
+.mode-btn.active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff; box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+}
+.mode-btn:not(.active):hover { color: #1e293b; background: #f1f5f9; }
+
+/* ===== Phase Navigation ===== */
+.phase-nav {
+  display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 12px;
+  scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;
+}
+.phase-nav::-webkit-scrollbar { height: 3px; }
+.phase-nav::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.phase-pill {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid #e2e8f0; background: #fff;
+  color: #64748b; transition: all 0.2s; white-space: nowrap;
+}
+.phase-pill:hover { border-color: #94a3b8; color: #1e293b; }
+.phase-pill.active { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+
+/* ===== Reference Search ===== */
+.ref-search {
+  margin-bottom: 12px;
+}
+.ref-search input {
+  width: 100%; padding: 9px 14px;
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 8px; color: #1e293b; font-size: 13px; outline: none;
+  transition: border-color 0.2s;
+}
+.ref-search input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.ref-search input::placeholder { color: #94a3b8; }
+
+/* ===== Reference Content ===== */
+#refContent .row { display: flex; gap: 8px; margin-bottom: 8px; }
+#refContent .row-2 .cell { flex: 1; }
+#refContent .row-3 .cell { flex: 1; }
+#refContent .row-4 .cell { flex: 1; }
+
+#refContent .cell {
+  border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 10px 12px; background: #fff;
+}
+#refContent .cell-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+#refContent .cell-body { font-size: 12px; line-height: 1.6; color: #475569; }
+#refContent .cell-body strong { color: #1e293b; }
+
+#refContent .bl { border-left: 4px solid #3b82f6; }
+#refContent .bl .cell-title { color: #1d4ed8; }
+#refContent .gl { border-left: 4px solid #10b981; }
+#refContent .gl .cell-title { color: #15803d; }
+#refContent .yl { border-left: 4px solid #f59e0b; }
+#refContent .yl .cell-title { color: #a16207; }
+#refContent .rl { border-left: 4px solid #ef4444; }
+#refContent .rl .cell-title { color: #b91c1c; }
+#refContent .pl { border-left: 4px solid #8b5cf6; }
+#refContent .pl .cell-title { color: #6d28d9; }
+#refContent .gyl { border-left: 4px solid #64748b; }
+#refContent .gyl .cell-title { color: #334155; }
+
+#refContent .tag { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; margin-right: 3px; }
+#refContent .tag-b { background: #dbeafe; color: #1d4ed8; }
+#refContent .tag-g { background: #dcfce7; color: #15803d; }
+#refContent .tag-y { background: #fef3c7; color: #a16207; }
+#refContent .tag-r { background: #fee2e2; color: #b91c1c; }
+#refContent .tag-p { background: #f3e8ff; color: #6d28d9; }
+#refContent .tag-gy { background: #f1f5f9; color: #334155; }
+
+#refContent .script-box {
+  background: #f8fafc; border: 1px dashed #cbd5e1;
+  border-radius: 6px; padding: 8px 10px; margin-top: 6px;
+  font-size: 12px; line-height: 1.6; color: #475569;
+}
+
+#refContent .principle-bar {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0;
+  padding: 10px 14px; margin: 10px 0; font-size: 12px; line-height: 1.7; color: #1e40af;
+}
+#refContent .principle-bar .pt { font-size: 13px; font-weight: 700; color: #1d4ed8; margin-bottom: 4px; }
+
+#refContent .hint {
+  padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 10px;
+}
+#refContent .hint-b { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e40af; }
+#refContent .hint-g { background: #f0fdf4; border-left: 3px solid #10b981; color: #166534; }
+#refContent .hint-y { background: #fefce8; border-left: 3px solid #f59e0b; color: #92400e; }
+
+#refContent .mini-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+#refContent .mini-table td { padding: 4px 6px; border: 1px solid #e2e8f0; color: #475569; }
+#refContent .mini-table td strong { color: #1e293b; }
+
+#refContent .ph-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; color: #fff;
+}
+#refContent .ph-num { font-size: 16px; font-weight: 800; }
+#refContent .ph-title { font-size: 14px; font-weight: 700; }
+#refContent .ph-meta { font-size: 10px; opacity: 0.85; margin-left: auto; }
+
+#refContent .ref-highlight { background: #fef3c7; padding: 1px 3px; border-radius: 3px; }
+
+#refContent .expand-body { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <h1>美食商业化智能提案</h1>
+    <div class="subtitle">关键识别 · 智能诊断 · 一键生成定制报价方案与谈判话术</div>
+  </div>
+  <div class="header-right">
+    <input type="file" id="speechDataFile" accept=".json" style="display:none" onchange="loadSpeechFile(this.files[0])">
+    <button class="header-badge" style="background:#10b981;cursor:pointer;border:none;" onclick="document.getElementById('speechDataFile').click()">
+      &nbsp;加载话术数据
+    </button>
+    <span id="speechDataStatus" style="font-size:10px;color:#64748b;"></span>
+    <button class="btn-secondary" style="flex:none;padding:5px 12px;" onclick="showHistory()">历史</button>
+    <div class="header-badge">v2.0</div>
+  </div>
+</div>
+
+<div class="main-container">
+  <!-- ========== Left Panel ========== -->
+  <div class="left-panel">
+    <!-- Screenshot Drop -->
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
+      <div class="hint" id="dropHint">
+        <b>粘贴/拖入截图</b><br>
+        商机详情 + 线上流量截图<br>
+        <span style="font-size:11px;color:#555;">支持 Ctrl+V 粘贴 / 拖拽 / 点击上传</span>
+      </div>
+      <div class="preview-imgs" id="previewImgs"></div>
+      <button class="clear-imgs" id="clearImgsBtn" onclick="event.stopPropagation();clearImages()">清除</button>
+    </div>
+    <div class="ocr-status" id="ocrStatus">
+      <div class="spinner" id="ocrSpinner"></div>
+      <span id="ocrText">正在识别截图内容...</span>
+      <button id="ocrDebugBtn" style="margin-left:auto;background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;display:none;" onclick="toggleOcrDebug()">查看原文</button>
+    </div>
+    <div id="ocrDebugBox" style="display:none;margin-top:4px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:10px;color:#64748b;">OCR识别原文（可编辑后点击重新解析）</span>
+        <button id="reparseBtn" onclick="reparseFromDebug()" style="background:#10b981;border:none;color:#fff;font-size:10px;padding:2px 10px;border-radius:4px;cursor:pointer;">重新解析</button>
+      </div>
+      <textarea id="ocrDebugText" style="width:100%;min-height:100px;max-height:200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#334155;line-height:1.6;padding:8px 10px;resize:vertical;font-family:monospace;box-sizing:border-box;"></textarea>
+    </div>
+
+    <!-- Quick Info -->
+    <div class="form-section">
+      <div class="form-section-title"><span style="font-size:14px;">📋</span> 商户信息（对照截图填写）</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>商户名称 <span class="req">*</span></label>
+          <input type="text" id="f_store" placeholder="从商机详情截图获取">
+        </div>
+        <div class="form-group">
+          <label>城市 <span class="req">*</span></label>
+          <input type="text" id="f_city" placeholder="如：昆明">
+        </div>
+        <div class="form-group">
+          <label>品类 <span class="req">*</span></label>
+          <select id="f_category">
+            <option value="">请选择</option>
+            <option value="米线">米线/粉面</option>
+            <option value="火锅">火锅</option>
+            <option value="海鲜">海鲜</option>
+            <option value="烧烤">烧烤</option>
+            <option value="川菜">川菜</option>
+            <option value="云南菜">云南菜/滇菜</option>
+            <option value="西餐">西餐</option>
+            <option value="烘焙">烘焙/饮品</option>
+            <option value="美食">美食(综合)</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>商户状态 <span class="req">*</span></label>
+          <select id="f_status">
+            <option value="">请选择</option>
+            <option value="新户">新户(从未合作)</option>
+            <option value="续签">续签(即将到期)</option>
+            <option value="断约">断约(已过期)</option>
+            <option value="升档">已合作升档</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>售卖目标 <span class="unit">（可多选，系统自动推荐）</span></label>
+          <div class="checkbox-group" id="f_targets">
+            <div class="checkbox-item checked" data-val="推广通" onclick="toggleCheck(this)">推广通</div>
+            <div class="checkbox-item" data-val="品牌顶展" onclick="toggleCheck(this)">品牌顶展</div>
+          </div>
+          <div style="font-size:10px;color:#64748b;margin-top:4px;padding:3px 8px;background:#f0fdf4;border-radius:4px;border-left:2px solid #10b981;">
+            商户通为<b style="color:#16a34a;">免费权益</b>（价值2000-4000元/年），高德烟火活动期间免费开通，可作为谈判抓手但无需售卖
+          </div>
+          <div id="targetRecommend" style="font-size:11px;color:#16a34a;margin-top:4px;display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 商圈与价格（自动提取） -->
+    <div class="form-section">
+      <div class="form-section-title"><span style="font-size:14px;">🏪</span> 商圈与价格（自动提取）</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="form-group">
+          <label>所属商圈</label>
+          <input type="text" id="f_district" placeholder="如：长堤路">
+        </div>
+        <div class="form-group">
+          <label>本店人均 <span class="unit">(元)</span></label>
+          <input type="number" id="f_price_self" placeholder="如：15">
+        </div>
+        <div class="form-group">
+          <label>同城人均 <span class="unit">(元)</span></label>
+          <input type="number" id="f_price_city" placeholder="如：49">
+        </div>
+      </div>
+    </div>
+
+    <!-- Data from screenshot - traffic table -->
+    <div class="form-section">
+      <div class="form-section-title"><span style="font-size:14px;">📊</span> 线上流量数据</div>
+      <div id="traffic_table_area" class="traffic-table-area">
+        <div class="traffic-table-placeholder" id="traffic_placeholder">
+          <span style="font-size:20px;opacity:0.5;">📊</span>
+          <p>上方粘贴流量截图后自动提取数据</p>
+        </div>
+        <table class="traffic-table" id="traffic_table" style="display:none;">
+          <thead>
+            <tr><th></th><th>本店</th><th>周边</th><th>同城</th></tr>
+          </thead>
+          <tbody id="traffic_tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BD补充客户情况 -->
+    <div class="form-section">
+      <div class="form-section-title"><span style="font-size:14px;">📝</span> 客户补充信息（BD填写）</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>客户特殊情况</label>
+          <textarea id="f_customer_note" rows="2" placeholder="如：高德状元榜商户、连锁品牌、本地口碑TOP、曾合作过推广通但断约等" style="width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;color:#1e293b;font-size:12px;resize:vertical;outline:none;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="generate()">生成报价方案 & 话术</button>
+    <div class="btn-row">
+      <button class="btn-clear" onclick="clearForm()">清空</button>
+    </div>
+  </div>
+
+  <!-- ========== Right Panel ========== -->
+  <div class="right-panel">
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" data-mode="gen" onclick="switchMode('gen')">🎯 个性化方案</button>
+      <button class="mode-btn" data-mode="ref" onclick="switchMode('ref')">📖 话术速查</button>
+    </div>
+
+    <!-- Generator Mode -->
+    <div id="genMode">
+      <div class="output-placeholder" id="placeholder">
+        <div class="big-icon">🎯</div>
+        <p>粘贴商机详情 + 流量数据截图<br>对照截图快速填写关键数据<br>一键生成报价方案 & 谈判话术</p>
+      </div>
+
+      <div id="outputArea" style="display:none;">
+        <div id="outputContent"></div>
+
+        <div class="motto-bar">
+          <div class="motto-text">造势 → 给利 → 逼单 → 退守</div>
+          <div class="motto-sub">电销谈判通用口诀</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reference Mode -->
+    <div id="refMode" style="display:none;">
+      <div class="ref-search">
+        <input type="text" id="refSearchInput" placeholder="搜索话术关键词..." oninput="searchRef(this.value)">
+      </div>
+      <div class="phase-nav" id="phaseNav"></div>
+      <div id="refContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <h3>历史记录</h3>
+    <div id="historyList"></div>
+    <button class="btn-clear" style="width:100%;margin-top:10px;" onclick="closeHistory()">关闭</button>
+  </div>
+</div>
+
+<script>
+// ==================== 截图输入 + OCR ====================
+const dropZone = document.getElementById('dropZone');
+let ocrQueue = [];
+let ocrProcessing = false;
+
+document.addEventListener('paste', function(e) {
+  const items = e.clipboardData.items;
+  for (let item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      addImageAndOCR(file);
+    }
+  }
+});
+
+dropZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  this.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', function() {
+  this.classList.remove('drag-over');
+});
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  this.classList.remove('drag-over');
+  for (let f of e.dataTransfer.files) {
+    if (f.type.startsWith('image/')) addImageAndOCR(f);
+  }
+});
+
+function handleFiles(files) {
+  for (let f of files) {
+    if (f.type.startsWith('image/')) addImageAndOCR(f);
+  }
+}
+
+function addImageAndOCR(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    const imgId = ++imgIdCounter;
+
+    // 创建缩略图容器
+    const wrap = document.createElement('div');
+    wrap.className = 'img-thumb-wrap';
+    wrap.dataset.imgId = imgId;
+
+    // 图片本体
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.onclick = function(ev) { ev.stopPropagation(); showLightbox(dataUrl, imgId); };
+
+    // 单张删除按钮（悬停显示）
+    const delBtn = document.createElement('button');
+    delBtn.className = 'img-del-btn';
+    delBtn.innerHTML = '&times;';
+    delBtn.title = '删除这张截图';
+    delBtn.onclick = function(ev) { ev.stopPropagation(); deleteOneImage(imgId); };
+
+    // 悬停放大提示
+    const zoomHint = document.createElement('div');
+    zoomHint.className = 'img-zoom-hint';
+    zoomHint.textContent = '点击放大';
+
+    wrap.appendChild(img);
+    wrap.appendChild(delBtn);
+    wrap.appendChild(zoomHint);
+    document.getElementById('previewImgs').appendChild(wrap);
+    document.getElementById('dropHint').style.display = 'none';
+    document.getElementById('clearImgsBtn').style.display = 'block';
+
+    window._latestImgUrl = dataUrl;
+    runOCR(dataUrl, imgId);
+  };
+  reader.readAsDataURL(file);
+}
+
+function showTrafficTable(data) {
+  var table = document.getElementById('traffic_table');
+  var ph = document.getElementById('traffic_placeholder');
+  var tbody = document.getElementById('traffic_tbody');
+  var rows = data.map(function(row) {
+    return '<tr><td>' + row.label + '</td><td>' + row.mine + '</td><td>' + row.nearby + '</td><td>' + row.city + '</td></tr>';
+  }).join('');
+  tbody.innerHTML = rows;
+  table.style.display = 'table';
+  ph.style.display = 'none';
+  window._trafficData = data;
+}
+
+function clearTrafficTable() {
+  var table = document.getElementById('traffic_table');
+  var ph = document.getElementById('traffic_placeholder');
+  table.style.display = 'none';
+  ph.style.display = 'flex';
+  window._trafficData = null;
+}
+
+function clearImages() {
+  document.getElementById('previewImgs').innerHTML = '';
+  document.getElementById('dropHint').style.display = 'block';
+  document.getElementById('clearImgsBtn').style.display = 'none';
+  setOcrStatus('hide');
+  document.getElementById('ocrDebugBtn').style.display = 'none';
+  document.getElementById('ocrDebugBox').style.display = 'none';
+  allOcrTexts = [];
+  imgOcrMap = {};
+  ocrCount = 0;
+  ocrDone = 0;
+  clearTrafficTable();
+}
+
+// 单张删除图片并重新解析
+function deleteOneImage(imgId) {
+  var wrap = document.querySelector('.img-thumb-wrap[data-img-id="' + imgId + '"]');
+  if (wrap) wrap.remove();
+  delete imgOcrMap[imgId];
+  allOcrTexts = Object.values(imgOcrMap);
+  ocrCount = Math.max(0, ocrCount - 1);
+  ocrDone = Math.max(0, ocrDone - 1);
+
+  var remaining = document.querySelectorAll('#previewImgs .img-thumb-wrap');
+  if (remaining.length === 0) {
+    document.getElementById('dropHint').style.display = 'block';
+    document.getElementById('clearImgsBtn').style.display = 'none';
+    setOcrStatus('hide');
+    document.getElementById('ocrDebugBtn').style.display = 'none';
+    document.getElementById('ocrDebugBox').style.display = 'none';
+    allOcrTexts = [];
+    imgOcrMap = {};
+    ocrCount = 0;
+    ocrDone = 0;
+    clearTrafficTable();
+    clearOcrFields();
+    return;
+  }
+  // 重新解析剩余截图
+  document.getElementById('ocrDebugText').value = allOcrTexts.join('\n---\n') || '(无识别结果)';
+  window._extractedData = {};
+  clearTrafficTable();
+  allOcrTexts.forEach(function(t) {
+    var types = classifyScreenshot(t);
+    if (types.includes('traffic')) parseTrafficData(t);
+    if (types.includes('case')) parseCaseData(t);
+    if (types.includes('business_detail')) parseCutScript(t);
+    if (types.includes('store_info')) parseStoreInfo(t);
+  });
+  clearOcrFields();
+  var textsForFields = allOcrTexts.filter(function(t) {
+    var tt = classifyScreenshot(t);
+    if (tt.includes('business_detail') || tt.includes('store_info')) return true;
+    return !tt.includes('traffic') && !tt.includes('case');
+  });
+  var filled = parseAndFill(textsForFields.join('\n'));
+  setOcrStatus('done', '已删除1张，重新解析完成，填充 ' + filled + ' 个字段');
+  showToast('已删除截图并重新解析', 'success');
+}
+
+// ==================== 灯箱 ====================
+function showLightbox(src, imgId) {
+  document.getElementById('lbImg').src = src;
+  var wraps = document.querySelectorAll('#previewImgs .img-thumb-wrap');
+  var idx = 0;
+  wraps.forEach(function(w, i) { if (w.dataset.imgId == imgId) idx = i; });
+  document.getElementById('lbSeq').textContent = '第 ' + (idx + 1) + ' / ' + wraps.length + ' 张';
+  document.getElementById('imgLightbox').classList.add('open');
+  document.addEventListener('keydown', lbKeyHandler);
+}
+function closeLightbox() {
+  document.getElementById('imgLightbox').classList.remove('open');
+  document.getElementById('lbImg').src = '';
+  document.removeEventListener('keydown', lbKeyHandler);
+}
+function lbKeyHandler(e) { if (e.key === 'Escape') closeLightbox(); }
+
+// ==================== OCR Engine ====================
+let allOcrTexts = [];
+let ocrCount = 0;
+let ocrDone = 0;
+let imgIdCounter = 0;
+let imgOcrMap = {}; // imgId -> ocrText，用于单张删除后重新解析
+
+function setOcrStatus(state, msg) {
+  const el = document.getElementById('ocrStatus');
+  const spinner = document.getElementById('ocrSpinner');
+  const text = document.getElementById('ocrText');
+  if (state === 'hide') {
+    el.className = 'ocr-status';
+    return;
+  }
+  if (state === 'loading') {
+    el.className = 'ocr-status loading show';
+    spinner.style.display = 'block';
+    text.textContent = msg || '正在识别截图内容...';
+  } else if (state === 'done') {
+    el.className = 'ocr-status done show';
+    spinner.style.display = 'none';
+    text.textContent = msg || '识别完成，已自动填充';
+  } else if (state === 'fail') {
+    el.className = 'ocr-status fail show';
+    spinner.style.display = 'none';
+    text.textContent = msg || '识别失败，请手动填写';
+  }
+}
+
+// 图片预处理：放大 + 增强对比度 → 提升OCR准确率
+function preprocessImage(imgSrc) {
+  return new Promise(function(resolve) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      // 放大2倍提升小字识别率
+      const scale = Math.max(2, 2000 / Math.max(img.width, img.height));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // 适度增强对比度（不做二值化，保留灰度层次）
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        // 温和对比度增强 (factor=1.3)
+        data[i]   = Math.min(255, Math.max(0, ((data[i]   - 128) * 1.3) + 128));
+        data[i+1] = Math.min(255, Math.max(0, ((data[i+1] - 128) * 1.3) + 128));
+        data[i+2] = Math.min(255, Math.max(0, ((data[i+2] - 128) * 1.3) + 128));
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = function() { resolve(imgSrc); }; // 失败则用原图
+    img.src = imgSrc;
+  });
+}
+
+async function runOCR(imgSrc, imgId) {
+  ocrCount++;
+  setOcrStatus('loading', '正在预处理图片...');
+  try {
+    // 预处理图片
+    const processed = await preprocessImage(imgSrc);
+    setOcrStatus('loading', '首次使用需下载语言包(约10MB)...');
+    const result = await Tesseract.recognize(processed, 'chi_sim+eng', {
+      logger: function(m) {
+        if (m.status === 'loading tesseract core') {
+          setOcrStatus('loading', '正在加载OCR引擎...');
+        } else if (m.status === 'loading language traineddata') {
+          setOcrStatus('loading', '正在下载中文语言包...');
+        } else if (m.status === 'recognizing text') {
+          const pct = Math.round((m.progress || 0) * 100);
+          setOcrStatus('loading', '正在识别文字... ' + pct + '%');
+        }
+      }
+    });
+    const ocrText = result.data.text;
+    console.log('[OCR] 识别结果:', ocrText);
+    // 存入 imgOcrMap，allOcrTexts 由 map 派生
+    if (imgId) imgOcrMap[imgId] = ocrText;
+    allOcrTexts = Object.values(imgOcrMap);
+    if (!imgId) allOcrTexts.push(ocrText); // 兼容无id调用
+    ocrDone++;
+    // 初始化全局数据
+    window._extractedData = window._extractedData || {};
+    // 截图分类并分发
+    var types = classifyScreenshot(ocrText);
+    if (types.includes('traffic')) parseTrafficData(ocrText);
+    if (types.includes('case')) parseCaseData(ocrText);
+    if (types.includes('business_detail')) parseCutScript(ocrText);
+    if (types.includes('store_info')) parseStoreInfo(ocrText);
+    // 仅纯 traffic/case 类型的截图不走 parseAndFill
+    // 如果截图同时含 business_detail 或 store_info，仍需保留（里面有店名等关键信息）
+    clearOcrFields();
+    var textsForFields = allOcrTexts.filter(function(t) {
+      var tt = classifyScreenshot(t);
+      if (tt.includes('business_detail') || tt.includes('store_info')) return true;
+      return !tt.includes('traffic') && !tt.includes('case');
+    });
+    const filled = parseAndFill(textsForFields.join('\n'));
+    if (filled > 0) {
+      setOcrStatus('done', '识别完成，已填充 ' + filled + ' 个字段，请核对' + (ocrDone < ocrCount ? '（还有图片在识别中...）' : '（如有错误可直接修改或编辑原文后重新解析）'));
+      showToast('已填充 ' + filled + ' 个字段，请核对准确性', 'success');
+    } else {
+      setOcrStatus('done', '识别完成，未能提取到有效字段（可手动填写）');
+    }
+    document.getElementById('ocrDebugBtn').style.display = 'inline-block';
+    // 自动展示OCR原文，方便核对
+    var debugBox = document.getElementById('ocrDebugBox');
+    debugBox.style.display = 'block';
+    document.getElementById('ocrDebugText').value = allOcrTexts.join('\n---\n') || '(无识别结果)';
+  } catch (err) {
+    console.error('[OCR] Error:', err);
+    ocrDone++;
+    setOcrStatus('fail', '识别失败: ' + (err.message || '未知错误') + '，请手动填写');
+    document.getElementById('ocrDebugBtn').style.display = 'inline-block';
+    var debugBox2 = document.getElementById('ocrDebugBox');
+    debugBox2.style.display = 'block';
+    document.getElementById('ocrDebugText').value = allOcrTexts.join('\n---\n') || '(无识别结果)';
+  }
+}
+
+// 清空OCR自动填充过的字段（重新解析前）
+function clearOcrFields() {
+  ['f_store','f_city','f_district','f_price_self','f_price_city'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.dataset.ocrFilled) {
+      el.value = '';
+      delete el.dataset.ocrFilled;
+    }
+  });
+  var catEl = document.getElementById('f_category');
+  if (catEl && catEl.dataset.ocrFilled) { catEl.value = ''; delete catEl.dataset.ocrFilled; }
+  var statusEl = document.getElementById('f_status');
+  if (statusEl && statusEl.dataset.ocrFilled) { statusEl.value = ''; delete statusEl.dataset.ocrFilled; }
+}
+
+// ==================== OCR 文本解析 ====================
+// UI标签黑名单：商机详情/流量页面的系统文字，不是店名
+var UI_LABEL_BLACKLIST = /所属商圈|连锁门店|门店设施|门店信息|门店量|门店数|门店评|门店详情|商机详情|商机概述|线上流量|流量数据|搜索转化|点击转化|导航转化|电话转化|本店|周边|同城|商户信息|对照截图|截图填写|售卖目标|商户状态|已自动|识别完成|请选择|品类|城市|竞争|异议|当前政策|查看原文|设施|查看|编辑|更多|收藏|操作|状态|收起|展开|返回|关闭|确认|取消|提交|保存|删除|刷新|加载|详情|基本信息|经营信息|经营类目|联系方式|营业时间|环境图|菜品图|门头照|领取人|认领状态|认领时间|待开店|待续约|已到期|合作中|跟进中|私淘|私海|公海|Leads/;
+
+function parseAndFill(text) {
+  let filled = 0;
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  // 预处理：为每行生成一个"合并中文字间空格"的版本，提升匹配率
+  const mergedLines = lines.map(function(l) {
+    return l.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
+            .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+  });
+  const fullText = mergedLines.join(' ');
+
+  // 辅助：判断是否是UI标签
+  function isUILabel(s) { return UI_LABEL_BLACKLIST.test(s); }
+
+  // 辅助：设置字段值（带OCR标记）
+  function setField(id, val) {
+    var el = document.getElementById(id);
+    if (el && !el.value && val) {
+      el.value = val;
+      el.dataset.ocrFilled = '1';
+      markFilled(id);
+      filled++;
+      return true;
+    }
+    return false;
+  }
+
+  // === 1. 解析商户名称 ===
+  let storeName = '';
+  // allLines = 原始行 + 合并空格后的行（去重），提高OCR不稳定时的匹配率
+  var allSearchLines = [];
+  for (var si = 0; si < mergedLines.length; si++) {
+    allSearchLines.push(mergedLines[si]);
+  }
+  // 策略A: 匹配括号中的店名 XXX(XXX店) — 最精确
+  for (let line of allSearchLines) {
+    var m1 = line.match(/([\u4e00-\u9fa5]{2,}[（\(][^）\)]*(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)[）\)])/);
+    if (m1 && !isUILabel(m1[1])) { storeName = m1[1]; break; }
+  }
+  // 策略A2: 匹配"XXX（任意文字）"括号模式（括号内没有特定后缀也行）
+  if (!storeName) {
+    for (let line of allSearchLines) {
+      var m1b = line.match(/([\u4e00-\u9fa5]{3,}[（\(][\u4e00-\u9fa5\w\s]{2,}[）\)])/);
+      if (m1b && !isUILabel(m1b[1]) && m1b[1].length >= 6) { storeName = m1b[1]; break; }
+    }
+  }
+  // 策略B: 匹配餐饮店名尾缀
+  if (!storeName) {
+    var storeRe = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆))/;
+    for (let line of allSearchLines) {
+      var m = line.match(storeRe);
+      if (m && m[1].length >= 4 && !isUILabel(m[1])) { storeName = m[1]; break; }
+    }
+  }
+  // 策略C: "商机详情"/"商户名称"标签后的文本行
+  if (!storeName) {
+    for (var li = 0; li < mergedLines.length; li++) {
+      if (/商机详情|商户名称|门店名称/.test(mergedLines[li])) {
+        var afterLabel = mergedLines[li].replace(/.*(?:商机详情|商户名称|门店名称)[：:\s]*/,'').trim();
+        if (afterLabel.length >= 3 && afterLabel.length < 30 && /[\u4e00-\u9fa5]/.test(afterLabel) && !isUILabel(afterLabel)) {
+          storeName = afterLabel; break;
+        }
+        for (var ni = 1; ni <= 3 && li + ni < mergedLines.length; ni++) {
+          var nextLine = mergedLines[li + ni].trim();
+          if (nextLine.length >= 4 && nextLine.length < 40 && /[\u4e00-\u9fa5]{3,}/.test(nextLine) && !isUILabel(nextLine) && !/^\d/.test(nextLine)) {
+            storeName = nextLine; break;
+          }
+        }
+        if (storeName) break;
+      }
+    }
+  }
+  // 策略D: 含有餐饮特征词的行
+  if (!storeName) {
+    for (let line of mergedLines) {
+      if (line.length > 40 || line.length < 4) continue;
+      if (/上坐|传统|过桥|黄焖|老字号|正宗|总店|旗舰/.test(line)) {
+        var cleaned = line.replace(/[@#<>《》\[\]【】\d]/g,'').trim();
+        if (cleaned.length >= 3 && !isUILabel(cleaned)) { storeName = cleaned; break; }
+      }
+    }
+  }
+  // 策略E: 找包含3个以上连续汉字且不是UI标签的最长行（兜底）
+  if (!storeName) {
+    var bestCandidate = '';
+    for (let line of mergedLines) {
+      if (line.length > 50 || line.length < 4) continue;
+      // 跳过纯数字、百分比行
+      if (/^[\d,.%\s万亿]+$/.test(line)) continue;
+      // 跳过含有流量指标关键词的行
+      if (/曝光|搜索|点击|导航|转化|电话量/.test(line)) continue;
+      // 找连续中文最长的段
+      var chineseRuns = line.match(/[\u4e00-\u9fa5（\(）\)]{4,}/g);
+      if (chineseRuns) {
+        for (var cr of chineseRuns) {
+          if (!isUILabel(cr) && cr.length > bestCandidate.length) {
+            bestCandidate = cr;
+          }
+        }
+      }
+    }
+    if (bestCandidate.length >= 4) {
+      storeName = bestCandidate;
+    }
+  }
+  if (storeName) {
+    // 深度清理OCR噪声
+    // 1. 去掉前后的标点、符号、英文字母、数字
+    storeName = storeName.replace(/^[●\.\s·\-—:：@#、，,;；\d\w]+/, '').replace(/[@#、，,;；\d]+$/, '').trim();
+    // 2. 去掉中文字间的OCR空格（"上坐 传统" → "上坐传统"）
+    storeName = storeName.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+    storeName = storeName.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+    // 3. 如果包含括号店名，优先提取括号模式
+    var bracketMatch = storeName.match(/([\u4e00-\u9fa5]{2,}[（\(][^）\)]+[）\)])/);
+    if (bracketMatch) {
+      storeName = bracketMatch[1];
+    } else {
+      // 4. 去掉首尾的单个汉字噪声
+      storeName = storeName.replace(/^[\u4e00-\u9fa5](?=[^\u4e00-\u9fa5])/, '').replace(/[^\u4e00-\u9fa5][\u4e00-\u9fa5]$/, '').trim();
+    }
+    // 5. 最终去除残留空格
+    storeName = storeName.replace(/\s+/g, '');
+    if (storeName.length >= 2 && !isUILabel(storeName)) {
+      setField('f_store', storeName);
+    }
+  }
+
+  // === 2. 解析城市 ===
+  const cityPatterns = [
+    /(?:云南|四川|贵州|广东|广西|浙江|江苏|福建|湖南|湖北|山东|河南|河北|安徽|江西|陕西|甘肃|海南|辽宁|吉林|黑龙江|内蒙古|新疆|西藏|青海|宁夏|山西|重庆|北京|上海|天津)(?:省|市|自治区)?\s*([\u4e00-\u9fa5]{2,4})(?:市|区)/,
+    /(昆明|成都|重庆|贵阳|广州|深圳|珠海|北海|日照|丽江|大理|张家界|三亚|厦门|杭州|南京|苏州|武汉|长沙|西安|郑州|济南|青岛|大连|沈阳|哈尔滨|长春|福州|南宁|海口|合肥|南昌|太原|兰州|银川|西宁|呼和浩特|乌鲁木齐|拉萨|佛山|东莞|中山|惠州|烟台|潍坊|临沂|徐州|常州|无锡|温州|金华|嘉兴|绍兴|泉州|漳州|南通|扬州|镇江|盐城|连云港|淮安|宿迁|泰州|保山|曲靖|玉溪|楚雄|红河|文山|普洱|临沧|德宏|怒江|迪庆|昭通)/
+  ];
+  for (let pat of cityPatterns) {
+    const m = fullText.match(pat);
+    if (m) {
+      const city = (m[1] || m[0]).replace(/[市省区]/g, '');
+      setField('f_city', city);
+      break;
+    }
+  }
+
+  // === 3. 流量数据不再OCR解析，直接展示截图图片 ===
+
+  // === 4. 自动推断品类 ===
+  if (!document.getElementById('f_category').value) {
+    // 优先用店名推断品类
+    var nameAndText = (storeName || '') + ' ' + fullText;
+    var catMap = [
+      [/过桥|米线|米粉/, '米线'],
+      [/火锅|串串|涮/, '火锅'],
+      [/海鲜|鱼|虾|蟹|龙虾/, '海鲜'],
+      [/烧烤|烤肉|烤串|撸串/, '烧烤'],
+      [/川菜|麻辣/, '川菜'],
+      [/云南菜|滇菜|傣味/, '云南菜'],
+      [/西餐|牛排|意面|汉堡|披萨/, '西餐'],
+      [/咖啡|奶茶|蛋糕|甜品|面包|烘焙|茶饮/, '烘焙'],
+      [/小吃|面馆|粉店|拉面|牛肉面|饺子|包子|馄饨/, '米线'],
+    ];
+    for (var ci = 0; ci < catMap.length; ci++) {
+      if (catMap[ci][0].test(nameAndText)) {
+        var catEl = document.getElementById('f_category');
+        catEl.value = catMap[ci][1];
+        catEl.dataset.ocrFilled = '1';
+        markFilled('f_category');
+        filled++;
+        break;
+      }
+    }
+  }
+
+  // === 5. 推断商户状态 ===
+  if (!document.getElementById('f_status').value) {
+    var statusEl = document.getElementById('f_status');
+    var statusSet = false;
+    // 优先从 Leads状态 字段提取（最可靠，来自截图3）
+    var leadsStatusM = fullText.match(/Leads状态[：:\s]*([\u4e00-\u9fa5]{2,4})/);
+    if (leadsStatusM) {
+      var lsMap = {'待开店':'新户','跟进中':'新户','待续约':'续签','已到期':'断约','合作中':'升档'};
+      var lsVal = lsMap[leadsStatusM[1]];
+      if (lsVal) { statusEl.value = lsVal; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++; statusSet = true; }
+    }
+    // 兜底：关键词推断（仅在 Leads状态 未匹配时生效）
+    if (!statusSet) {
+      if (/新[户客签]|从未合作|首次|未合作|未开通/.test(fullText)) {
+        statusEl.value = '新户'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
+      } else if (/续[签约充]|即将到期|快到期|到期续/.test(fullText)) {
+        statusEl.value = '续签'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
+      } else if (/断约|已过期|已到期|停止合作|中断/.test(fullText)) {
+        statusEl.value = '断约'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
+      } else if (/升档|要升级|想加量|加大投入/.test(fullText)) {
+        statusEl.value = '升档'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
+      }
+    }
+  }
+
+  // === 6. 智能推荐售卖目标 ===
+  recommendTargets();
+
+  return filled;
+}
+
+// 根据已填充的数据智能推荐售卖目标组合
+function recommendTargets() {
+  var reasons = [];
+  var recommended = [];
+  var status = document.getElementById('f_status').value;
+  var category = document.getElementById('f_category').value;
+
+  // 推广通：几乎所有商户都需要
+  recommended.push('推广通');
+  reasons.push('推广通：核心流量产品，提升搜索排名和曝光');
+
+  // 品牌顶展：头部商户/连锁/品牌
+  if (/连锁|品牌|旗舰|总店/.test(document.getElementById('f_store').value || '')) {
+    recommended.push('品牌顶展');
+    reasons.push('品牌顶展：品牌/连锁商户适合品牌曝光');
+  }
+
+  // 自动勾选推荐项
+  document.querySelectorAll('#f_targets .checkbox-item').forEach(function(el) {
+    if (recommended.includes(el.dataset.val)) {
+      el.classList.add('checked');
+    } else {
+      el.classList.remove('checked');
+    }
+  });
+
+  // 显示推荐理由
+  var recEl = document.getElementById('targetRecommend');
+  if (reasons.length > 0) {
+    recEl.innerHTML = '系统推荐：' + reasons.join('；');
+    recEl.style.display = 'block';
+  }
+}
+
+function markFilled(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (el) {
+    el.classList.add('ocr-filled');
+    setTimeout(function() { el.classList.remove('ocr-filled'); }, 5000);
+  }
+}
+
+function toggleOcrDebug() {
+  var box = document.getElementById('ocrDebugBox');
+  if (box.style.display === 'none') {
+    box.style.display = 'block';
+    document.getElementById('ocrDebugText').value = allOcrTexts.join('\n---\n') || '(无识别结果)';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+// 用户编辑原文后重新解析
+function reparseFromDebug() {
+  var rawText = document.getElementById('ocrDebugText').value;
+  if (!rawText || rawText === '(无识别结果)') {
+    showToast('没有可解析的文本', 'warning');
+    return;
+  }
+  // 分段处理：按截图分类分发到对应解析器
+  window._extractedData = {};
+  var segments = rawText.split(/\n---\n/);
+  var fieldTexts = [];
+  segments.forEach(function(seg) {
+    var types = classifyScreenshot(seg);
+    if (types.includes('traffic')) parseTrafficData(seg);
+    if (types.includes('case')) parseCaseData(seg);
+    if (types.includes('business_detail')) parseCutScript(seg);
+    if (types.includes('store_info')) parseStoreInfo(seg);
+    // 保留含 business_detail/store_info 的文本用于提取店名等字段
+    if (types.includes('business_detail') || types.includes('store_info')) {
+      fieldTexts.push(seg);
+    } else if (!types.includes('traffic') && !types.includes('case')) {
+      fieldTexts.push(seg);
+    }
+  });
+  clearOcrFields();
+  var filled = parseAndFill(fieldTexts.join('\n'));
+  if (filled > 0) {
+    setOcrStatus('done', '重新解析完成，已填充 ' + filled + ' 个字段（请核对）');
+    showToast('重新解析完成，已填充 ' + filled + ' 个字段', 'success');
+  } else {
+    setOcrStatus('done', '重新解析未能提取到有效字段');
+  }
+}
+
+// ==================== 截图分类 + 多类型解析器 ====================
+// 全局提取数据存储
+window._extractedData = window._extractedData || {};
+
+function classifyScreenshot(text) {
+  var types = [];
+  if (/曝光|导航|转化率|电话量|点击量/.test(text) && /\d/.test(text)) types.push('traffic');
+  if (/合作案例|附近合作|广告参考|合作商户/.test(text)) types.push('case');
+  if (/切口话术|切口|行业知识|客户诊断|建议话术/.test(text)) types.push('business_detail');
+  if (/所属商圈|本店人均|同城人均|经营类目/.test(text)) types.push('store_info');
+  return types;
+}
+
+function parseCutScript(text) {
+  var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+  var result = { raw: '', industryKnowledge: '', diagnosis: '', suggestedHooks: [] };
+  var capturing = false;
+  var currentSection = '';
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+    if (/切口话术|切口/.test(line) && !capturing) { capturing = true; continue; }
+    if (!capturing) continue;
+    if (/行业知识/.test(line)) { currentSection = 'industry'; continue; }
+    if (/客户诊断/.test(line)) { currentSection = 'diagnosis'; continue; }
+    if (/建议话术/.test(line)) { currentSection = 'hooks'; continue; }
+    if (/商机详情|线上流量|合作案例|门店信息|商机概述/.test(line)) break;
+    if (line.length < 2) continue;
+    result.raw += line + '\n';
+    if (currentSection === 'industry') result.industryKnowledge += line + '；';
+    else if (currentSection === 'diagnosis') result.diagnosis += line + '；';
+    else if (currentSection === 'hooks') result.suggestedHooks.push(line);
+    else result.industryKnowledge += line + '；';
+  }
+  if (result.raw) window._extractedData.cutScript = result;
+}
+
+function parseCaseData(text) {
+  var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+  var result = { storeName: '', cooperationDate: '', monthlyOrders: '', revenue: '', adSpend: '', raw: '' };
+  var inCase = false;
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+    if (/合作案例|附近合作|合作商户/.test(line)) { inCase = true; continue; }
+    if (!inCase) continue;
+    if (/线上流量|门店信息|商机概述|商机详情/.test(line)) break;
+    result.raw += line + '\n';
+    if (!result.storeName) {
+      var nameM = line.match(/([\u4e00-\u9fa5*]{2,}(?:店|餐厅|馆|粉|面|火锅|[\*]{2,}[\u4e00-\u9fa5]*))/);
+      if (nameM) result.storeName = nameM[1];
+    }
+    if (!result.cooperationDate) {
+      var dateM = line.match(/(20\d{2}[-.\\/]\d{1,2}[-.\\/]\d{1,2})/);
+      if (dateM) result.cooperationDate = dateM[1];
+    }
+    var orderM = line.match(/(\d+[\d,.]*)\s*(?:单|订单|笔)/);
+    if (orderM) result.monthlyOrders = orderM[1];
+    var revM = line.match(/(\d+[\d,.]*[万亿]?)\s*(?:元|营收|收入)/);
+    if (revM) result.revenue = revM[1];
+    var adM = line.match(/(?:广告|消耗|投入|预算)[：:\s]*(\d+[\d,.]*[万]?)/);
+    if (!adM) adM = line.match(/(\d+[\d,.]*[万]?)\s*(?:广告|消耗)/);
+    if (adM) result.adSpend = adM[1];
+  }
+  if (result.raw) window._extractedData.caseData = result;
+}
+
+function parseStoreInfo(text) {
+  var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+    var distM = line.match(/所属商圈[：:\s]*([\u4e00-\u9fa5\w]+)/);
+    if (distM) {
+      var el = document.getElementById('f_district');
+      if (el && !el.value) { el.value = distM[1]; el.dataset.ocrFilled = '1'; }
+      window._extractedData.district = distM[1];
+    }
+    var selfM = line.match(/本店人均[价格]*[：:\s]*([\d.]+)/);
+    if (selfM) {
+      var el2 = document.getElementById('f_price_self');
+      if (el2 && !el2.value) { el2.value = selfM[1]; el2.dataset.ocrFilled = '1'; }
+      window._extractedData.priceSelf = selfM[1];
+    }
+    var cityM = line.match(/同城人均[价格]*[：:\s]*([\d.]+)/);
+    if (cityM) {
+      var el3 = document.getElementById('f_price_city');
+      if (el3 && !el3.value) { el3.value = cityM[1]; el3.dataset.ocrFilled = '1'; }
+      window._extractedData.priceCity = cityM[1];
+    }
+    var catM = line.match(/经营类目[：:\s]*([\u4e00-\u9fa5\-]+)/);
+    if (catM) {
+      var parts = catM[1].split(/[-\-]/);
+      var lastPart = parts[parts.length - 1];
+      var catMap = {'海南菜':'美食','中餐':'美食','火锅':'火锅','烧烤':'烧烤',
+        '川菜':'川菜','云南菜':'云南菜','滇菜':'云南菜','西餐':'西餐',
+        '咖啡':'烘焙','奶茶':'烘焙','面食':'米线','粉面':'米线','海鲜':'海鲜'};
+      var catVal = catMap[lastPart] || '美食';
+      var catEl = document.getElementById('f_category');
+      if (catEl && !catEl.value) { catEl.value = catVal; catEl.dataset.ocrFilled = '1'; }
+      window._extractedData.categoryRaw = catM[1];
+    }
+    var leadsM = line.match(/[Ll]eads[状态]*[：:\s]*([\u4e00-\u9fa5]+)/);
+    if (leadsM) {
+      var statusMap = {'待开店':'新户','跟进中':'新户','待续约':'续签','已到期':'断约','合作中':'升档'};
+      var statusVal = statusMap[leadsM[1]] || '';
+      if (statusVal) {
+        var sEl = document.getElementById('f_status');
+        if (sEl && !sEl.value) { sEl.value = statusVal; sEl.dataset.ocrFilled = '1'; }
+      }
+    }
+  }
+}
+
+// ==================== 流量数据解析 ====================
+function parseTrafficData(text) {
+  // 解析OCR识别的流量数据为表格 —— 固定10个维度指标（高德商户后台）
+  var lines = text.split('\n').map(function(l) { return l.replace(/\s+/g, ' ').trim(); }).filter(function(l) { return l; });
+
+  // 固定维度指标列表（按高德后台实际展示顺序）
+  var METRIC_LABELS = ['曝光量', '搜索量', '泛搜量', '精搜量', '点击量', '曝光-点击转化率', '导航量', '点击-导航转化率', '来电量', '点击-来电转化率'];
+
+  // 存放提取结果
+  var extracted = {};
+
+  // 核心策略：逐行扫描，找到包含指标名的行，然后从该行及后续行中提取数值
+  // 高德后台截图OCR的典型格式：每个指标独占一行或与数值同行
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    // 合并中文字间OCR空格
+    var merged = line.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
+                     .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+
+    // 匹配当前行对应哪个指标
+    var matchedLabel = '';
+    if (/曝光[·\-\s]*点击[·\-\s]*转化/.test(merged)) matchedLabel = '曝光-点击转化率';
+    else if (/点击[·\-\s]*导航[·\-\s]*转化/.test(merged)) matchedLabel = '点击-导航转化率';
+    else if (/点击[·\-\s]*来电[·\-\s]*转化/.test(merged)) matchedLabel = '点击-来电转化率';
+    else if (/泛搜[量索]?/.test(merged)) matchedLabel = '泛搜量';
+    else if (/精搜[量索]?/.test(merged)) matchedLabel = '精搜量';
+    else if (/曝光[量]?/.test(merged) && !/转化|点击/.test(merged)) matchedLabel = '曝光量';
+    else if (/搜索[量]?/.test(merged) && !/泛|精/.test(merged)) matchedLabel = '搜索量';
+    else if (/点击[量数]?/.test(merged) && !/转化|导航|来电|曝光/.test(merged)) matchedLabel = '点击量';
+    else if (/导航[量数]?/.test(merged) && !/转化|点击/.test(merged)) matchedLabel = '导航量';
+    else if (/来电[量数]?/.test(merged) && !/转化|点击/.test(merged)) matchedLabel = '来电量';
+
+    if (!matchedLabel || extracted[matchedLabel]) continue;
+
+    // 从当前行提取数值
+    // 去除日期格式干扰（如 2025.04.09、2025-05-09、04月09日、近30天）
+    var numStr = line.replace(/20[2-3]\d[.\-\/]\d{1,2}[.\-\/]\d{1,2}/g, '')
+                     .replace(/20[2-3]\d[.\-\/]\d{1,2}/g, '')
+                     .replace(/20[2-3]\d/g, '')
+                     .replace(/\d{1,2}[年月日号天]/g, '')
+                     .replace(/近\d+/g, '');
+    var nums = numStr.match(/[\d,.]+[万亿%]?/g);
+    // 过滤掉孤立的零前缀数字（日期残留如"09"、"04"）
+    if (nums) {
+      nums = nums.filter(function(n) {
+        if (/[万亿%,.]/.test(n)) return true;
+        if (/^0\d$/.test(n)) return false;
+        return true;
+      });
+    }
+
+    if (nums && nums.length >= 3) {
+      extracted[matchedLabel] = { mine: nums[0], nearby: nums[1], city: nums[2] };
+    } else if (nums && nums.length === 2) {
+      extracted[matchedLabel] = { mine: nums[0], nearby: nums[1], city: '-' };
+    } else if (nums && nums.length === 1) {
+      extracted[matchedLabel] = { mine: nums[0], nearby: '-', city: '-' };
+    } else {
+      // 当前行没数值，尝试在下一行找（OCR可能把数值断到下一行）
+      if (i + 1 < lines.length) {
+        var nextLine = lines[i + 1];
+        // 下一行如果包含指标关键词则跳过（是另一个指标，不是数值行）
+        if (!/[曝光搜索点击导航来电泛精]/.test(nextLine.replace(/[\d,.%万亿\s]/g, ''))) {
+          var nextNums = nextLine.match(/[\d,.]+[万亿%]?/g);
+          if (nextNums && nextNums.length >= 3) {
+            extracted[matchedLabel] = { mine: nextNums[0], nearby: nextNums[1], city: nextNums[2] };
+            i++; // 跳过已消费的数值行
+          } else if (nextNums && nextNums.length >= 1) {
+            extracted[matchedLabel] = { mine: nextNums[0], nearby: nextNums[1] || '-', city: nextNums[2] || '-' };
+            i++;
+          }
+        }
+      }
+    }
+  }
+
+  // 组装固定10行数据（未提取到的显示"-"）
+  var data = METRIC_LABELS.map(function(label) {
+    var vals = extracted[label];
+    return {
+      label: label,
+      mine: vals ? vals.mine : '-',
+      nearby: vals ? vals.nearby : '-',
+      city: vals ? vals.city : '-'
+    };
+  });
+
+  showTrafficTable(data);
+}
+
+// ==================== 表单工具 ====================
+function toggleCheck(el) { el.classList.toggle('checked'); }
+function fillField(id, val) { document.getElementById(id).value = val; }
+
+function getFormData() {
+  const objEl = document.getElementById('f_objections');
+  const objChecks = objEl ? objEl.querySelectorAll('.checkbox-item.checked') : [];
+  const targetChecks = document.querySelectorAll('#f_targets .checkbox-item.checked');
+  const policyEl = document.getElementById('f_policy');
+  const compEl = document.getElementById('f_comp_name');
+  const compStatusEl = document.getElementById('f_comp_status');
+  return {
+    store: document.getElementById('f_store').value.trim(),
+    city: document.getElementById('f_city').value.trim(),
+    category: document.getElementById('f_category').value,
+    status: document.getElementById('f_status').value,
+    district: document.getElementById('f_district') ? document.getElementById('f_district').value.trim() : '',
+    price_self: document.getElementById('f_price_self') ? document.getElementById('f_price_self').value.trim() : '',
+    price_city: document.getElementById('f_price_city') ? document.getElementById('f_price_city').value.trim() : '',
+    targets: Array.from(targetChecks).map(el => el.dataset.val),
+    target: Array.from(targetChecks).map(el => el.dataset.val).join('+') || '推广通',
+    policy: policyEl ? policyEl.value.trim() : '',
+    comp_name: compEl ? compEl.value.trim() : '',
+    comp_status: compStatusEl ? compStatusEl.value.trim() : '',
+    customer_note: document.getElementById('f_customer_note').value.trim(),
+    objections: Array.from(objChecks).map(el => el.dataset.val),
+    holiday: getHoliday(),
+    hasTrafficImg: !!window._trafficData,
+    cutScript: window._extractedData && window._extractedData.cutScript || null,
+    caseData: window._extractedData && window._extractedData.caseData || null
+  };
+}
+
+function validate(d) {
+  if (!d.store) return '请填写商户名称';
+  if (!d.city) return '请填写城市';
+  if (!d.category) return '请选择品类';
+  if (!d.status) return '请选择商户状态';
+  return null;
+}
+
+function clearForm() {
+  document.querySelectorAll('.left-panel input').forEach(el => el.value = '');
+  document.querySelectorAll('.left-panel select').forEach(el => el.selectedIndex = 0);
+  document.querySelectorAll('.checkbox-item.checked').forEach(el => el.classList.remove('checked'));
+  // 恢复推广通默认勾选
+  var tgtFirst = document.querySelector('#f_targets .checkbox-item[data-val="推广通"]');
+  if (tgtFirst) tgtFirst.classList.add('checked');
+  var recEl = document.getElementById('targetRecommend');
+  if (recEl) { recEl.style.display = 'none'; recEl.innerHTML = ''; }
+  clearImages();
+  clearTrafficTable();
+  window._extractedData = {};
+  document.getElementById('outputArea').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'flex';
+}
+
+function getHoliday() {
+  const m = new Date().getMonth() + 1;
+  if (m <= 2) return '春节';
+  if (m <= 4) return '五一';
+  if (m <= 5) return '端午节';
+  if (m <= 6) return '暑期';
+  if (m <= 8) return '暑期旺季';
+  if (m <= 10) return '国庆';
+  return '元旦/春节';
+}
+
+// ==================== 场景匹配 ====================
+function matchScenario(d) {
+  let primary = 'cold_start';
+  let secondary = [];
+  if (d.status === '新户') primary = 'cold_start';
+  else if (d.status === '续签' || d.status === '断约') primary = 'renewal';
+  else if (d.status === '升档') primary = 'renewal';
+  if (['海鲜','烧烤'].includes(d.category)) secondary.push('peak_season');
+  if (d.targets && d.targets.includes('品牌顶展')) secondary.push('peak_season');
+  if (d.objections.length > 0) secondary.push('objection_handle');
+  secondary = secondary.filter(s => s !== primary);
+  return { primary, secondary: [...new Set(secondary)] };
+}
+
+// ==================== 模板填充 ====================
+function T(tpl, d) {
+  if (!tpl) return '';
+  return tpl
+    .replace(/\{store\}/g, d.store || '')
+    .replace(/\{city\}/g, d.city || '')
+    .replace(/\{category\}/g, d.category || '美食')
+    .replace(/\{holiday\}/g, d.holiday || '节假日')
+    .replace(/\{policy\}/g, d.policy || '预存即送')
+    .replace(/\{comp\}/g, d.comp_name || '同行竞对')
+    .replace(/\{comp_status\}/g, d.comp_status || '已合作')
+    .replace(/\{customer_note\}/g, d.customer_note || '')
+    .replace(/\{district\}/g, d.district || '')
+    .replace(/\{price_self\}/g, d.price_self || '')
+    .replace(/\{price_city\}/g, d.price_city || '')
+    .replace(/\{case_store\}/g, (d.caseData && d.caseData.storeName) || '附近商户')
+    .replace(/\{case_orders\}/g, (d.caseData && d.caseData.monthlyOrders) || '');
+}
+
+// ==================== 营销活动数据（招商抓手） ====================
+var MARKETING_ACTIVITIES = [
+  {
+    id: 'new_customer_price',
+    name: '新客价（货补）',
+    type: '商户出资+平台补贴',
+    icon: '🆕',
+    period: '长期',
+    categories: ['轻餐'],
+    summary: '配置新客价，平台额外给货补补贴',
+    details: [
+      '选品：每个商户销量TOP3商品，配置新客价',
+      '8折方案：新客价≤8折且商家出资≥2元 → 平台补贴12%（上限3元/单）',
+      '6折方案：新客价≤6折且商家出资≥3元 → 平台补贴15%（上限5元/单）',
+      '新客价商品在货架置顶展示，库存≥100/天'
+    ],
+    script: '老板，现在配置新客价的话平台还额外给货补。比如您一个商品日常卖30，新客价打8折=24元，您出2块钱，平台再补12%就是将近3块，相当于平台帮您一起拉新客。'
+  },
+  {
+    id: 'off_peak',
+    name: '闲时特惠/分人群营销',
+    type: '商户出资',
+    icon: '⏰',
+    period: '4.1-6.30',
+    categories: ['all'],
+    summary: '满足超划算标准可进A品区，获额外流量',
+    details: [
+      '达到超划算S档准入门槛 → 进超划算A品区',
+      '平台给额外流量资源加持',
+      '注意：每天有补贴金额限制，花完即止'
+    ],
+    script: '现在配置闲时特惠的话，达到超划算标准就能进A品区拿到额外流量，相当于免费的曝光资源。'
+  },
+  {
+    id: 'sweep_coupon',
+    name: '美食扫街券（C补）',
+    type: '平台出资',
+    icon: '🎫',
+    period: '至5.31',
+    categories: ['all'],
+    summary: '平台发券引流，商户无需额外出资',
+    details: [
+      '日常档：12-2、59-6、89-9、159-15、299-30（平台出50-60%）',
+      '大促档：12-2、59-8、89-12、159-20、299-40（平台出50-70%）',
+      '用户每天可领1次券包，可与品质联盟叠加',
+      '商户只需报名活动商品即可享受扫街券流量'
+    ],
+    script: '现在平台有扫街券活动，用户搜美食就能领到优惠券，券的钱大部分平台出。您只要报名参加，平台帮您做引流，相当于免费获客。'
+  },
+  {
+    id: 'expansion_coupon_festival',
+    name: '五一膨胀红包（C补）',
+    type: '平台主出资',
+    icon: '🧧',
+    period: '五一大促期间',
+    categories: ['all'],
+    summary: '叠加在扫街券基础上，商户仅出3.6元/单，未核销不扣费',
+    details: [
+      '推荐档位：满89元减12，商户仅出资3.6元，平台出资8.4元',
+      '在原扫街券基础上叠加，双重优惠吸引顾客',
+      '未核销的情况下不会扣费，零风险',
+      '报名成功后额外获得平台曝光展位加持',
+      '套餐竞争力可超越美团/抖音同品类商品'
+    ],
+    script: '老板，五一期间还有一个膨胀红包活动，是在原本平台全部出资的扫街券基础上叠加的。建议您报名满89元减12这个档位，您只用出3.6元，剩下8.4元全平台出，而且没有核销的情况下是不会扣费的，完全没有风险。报名成功后平台还会给您的门店额外提供曝光展位，这样您的套餐跟美团抖音比更有竞争力。'
+  },
+  {
+    id: 'expansion_coupon',
+    name: '反圈膨胀券（C补）',
+    type: '平台出资',
+    icon: '🎯',
+    period: '4.1-5.31',
+    categories: ['all'],
+    summary: '算法智能发券，补贴率3-5%，可与品质联盟叠加',
+    details: [
+      '4-5张算法满减膨胀券，用户每天可领1次',
+      '平台补贴率3%-5%，算法自动匹配',
+      '可与品质联盟货补叠加，双重优惠吸引顾客'
+    ],
+    script: '平台现在有膨胀券活动，算法自动给您店的用户发满减券，补贴率3到5个点，还能跟品质联盟叠加，顾客看到双重优惠下单率更高。'
+  },
+  {
+    id: 'quality_alliance',
+    name: '品质联盟补贴（B补）',
+    type: '平台出资',
+    icon: '🏅',
+    period: '4.1-5.31',
+    categories: ['all'],
+    summary: '入围门店商品自动立减2-3%，平台买单',
+    details: [
+      '入围门店随机商品享受平台立减补贴',
+      '平均补贴率2%-3%，单笔最高立减10元',
+      '可与膨胀券叠加',
+      '入围条件：账期≥3天 + 三星/五星货架 + 有团购/代金券'
+    ],
+    script: '您入围品质联盟的话，平台直接给您的商品做立减，平均补2-3个点，最高一单减10块，这钱完全平台出，顾客看到价格更有吸引力。'
+  },
+  {
+    id: 'bet_activity',
+    name: '对赌活动（B补）',
+    type: '平台出资',
+    icon: '🎲',
+    period: '长期',
+    categories: ['all'],
+    summary: '核销达门槛即可参与，完成目标每单补贴最高30元，全月补贴率≤7%',
+    details: [
+      '入围条件：近期核销数据达到平台对赌门槛，账期≥3天，有团购/代金券',
+      '常规品类单品补贴上限≤30元/单（烧烤/自助/中餐可特批≤50元）',
+      '全月补贴率≤7%，补贴率=补贴金额/支付GMV',
+      '连锁品牌可打包旗下多门店参与，快速提升品牌在高德整体知名度',
+      '可搭配置顶展示位+多广告位曝光模式，放大核销转化'
+    ],
+    script: '老板，咱这边数据显示您门店近几个月的线上核销已经达到了参与高德对赌活动的门槛，这个活动门槛不是谁都能达到的。参与对赌后，完成目标时平台每单补贴最高可到30元，这钱全平台出，需要您这边把套餐价格设置得比友商更有竞争力，达成目标后等于平台帮您倒贴引流。如果您旗下有多个门店，还可以打包参与，一下子把咱们品牌在高德的整体知名度拉起来，为旅游旺季做好承接，非常划算。'
+  },
+  {
+    id: 'combo_activity',
+    name: '组品套餐+大促货补',
+    type: '平台出资',
+    icon: '🍱',
+    period: '大促期间',
+    categories: ['正餐'],
+    summary: '大促期间将热销菜品组合成新套餐，平台配最高20元货补，每天限10单/POI',
+    details: [
+      '适用品类：东南亚菜、火锅、烧烤、中餐、日韩料理、西餐',
+      '将门店最受欢迎的2个菜品组合出新套餐，平台配最高20元货补/单',
+      '每天限量10单，货补全部由平台出资，商户零出资',
+      '门店近30天有动销且订单≥1',
+      '套餐商品打标"扫街必选"，获额外曝光展位',
+      '叠加五一膨胀红包后套餐竞争力超越其他平台'
+    ],
+    script: '老板，现在是大促期间，建议您把店里最受欢迎的两个菜品组合起来推出一个新套餐。平台会给新套餐配置最高20元的货补，每天限量10单，这钱全部由平台出资来帮您做活动，您一分钱不用多出。套餐上线后还会打上"扫街必选"的标，获得额外曝光展位，比您在美团抖音的套餐竞争力更强。您方便的话把需要报名的套餐菜品勾选确认一下，我们马上帮您配置。'
+  }
+];
+
+// 根据商户品类返回相关营销活动
+function getRelevantActivities(category) {
+  var cat = (category || '').toLowerCase();
+  var isLightMeal = /奶茶|咖啡|甜品|蛋糕|面包|小吃|快餐|粉|面|饮品|果汁|冰淇淋|烘焙|零食|鸡排|汉堡|披萨|炸鸡/.test(cat);
+  var isFormalDining = /火锅|烧烤|中餐|日料|韩料|西餐|东南亚|自助|海鲜|正餐|日韩/.test(cat);
+  return MARKETING_ACTIVITIES.filter(function(act) {
+    if (act.categories.includes('all')) return true;
+    if (act.categories.includes('轻餐') && isLightMeal) return true;
+    if (act.categories.includes('正餐') && isFormalDining) return true;
+    return false;
+  });
+}
+
+// ==================== 品牌顶展政策 ====================
+// 数据来源：顶展2.0 2026年售卖政策
+window.DINGZHAN_POLICY = {
+  productName: '品牌顶展2.0',
+  intro: '用户在高德搜索「火锅/烧烤/奶茶」等关键词时，您的门店出现在搜索结果顶部，抢在竞争门店前被看见。词包覆盖数百个美食搜索词，5km范围内精准触达。',
+  minBudget: 10000,
+  minPeriod: 3,  // 月
+  discountFloor: 0.75, // 最低75折
+  qualifications: {
+    single_poi: '单店：门店须有高价值POLKA资质 或 扫街榜/友商榜单收录',
+    multi_poi: '全域：同一品牌在投放城市门店数 ≥ 3'
+  },
+  tiers: [
+    {
+      name: '单店版',
+      price: '¥10,000',
+      unit: '/ 3个月 · 1个POI',
+      recommended: false,
+      perks: [
+        '1个门店顶部搜索展示',
+        '覆盖数百个美食搜索关键词',
+        '5km范围内精准曝光',
+        '用户搜索直接看到您的门店',
+        '适合：有高价值POLKA或榜单资质的单店'
+      ]
+    },
+    {
+      name: '品牌版',
+      price: '¥30,000',
+      unit: '/ 3个月 · 3个POI',
+      recommended: true,
+      perks: [
+        '3个核心门店同时顶部展示',
+        '全城品牌覆盖，建立搜索壁垒',
+        '同一品牌全域投放，排他竞争对手',
+        '覆盖数百个搜索关键词 × 3城区',
+        '适合：连锁/多店品牌商户'
+      ]
+    }
+  ],
+  note: '折扣最低到码前价75折，不可低价售卖。单次投放最长90天，需连续投放。仅支持POI维度，不支持品牌维度合首。',
+  script: '老板，除了推广通，我们还有一个产品叫<span class="hl">品牌顶展</span>，跟推广通的逻辑不一样。推广通是竞价排名，顶展是——只要有用户在{city}搜"火锅"、"烧烤"这些词，您的{store}直接出现在搜索结果最顶上，不用竞价，就在那里。\n\n这个词包覆盖了几百个搜索词，5公里范围内的用户一搜就能看到您。对于{category}这个品类来说，搜索意图很强，顶展就是把这些有购买意向的用户直接截过来。\n\n起投<span class="hl">10000元买3个月</span>，平均一天110块，只要一天来一桌就回本了。'
+};
+
+// ==================== 话术模板库 ====================
+const SCENARIOS = {
+  peak_season: {
+    name: '节点/旺季流量切入',
+    steps: [
+      { label: '造势', text: '节假日/旺季时间窗口开场，制造紧迫感' },
+      { label: '数据佐证', text: '用后台数据引出话题，证明平台有流量' },
+      { label: '稀缺逼单', text: '限时政策+一城一类目+同行已投放' },
+      { label: '轻决策', text: '「先看看/先申请」降低决策门槛' }
+    ],
+    quotes: [
+      { text: '马上到{holiday}了，{holiday}的流量还是比较大的', note: '节点紧迫感开场' },
+      { text: '高德出行节，针对{city}优质{category}商家推荐', note: '平台背书+独家稀缺性' },
+      { text: '{policy}，广告金不过期', note: '利益点直给' },
+      { text: '有顾客搜索{category}关键词，{store}可以获得优先推送', note: '场景化获客描述' },
+      { text: '像{comp}{comp_status}，排名一直在前面', note: '同行竞争刺激' }
+    ],
+    keyPoints: ['节假日前3-5天是最佳触达窗口','重点讲导航/搜索场景','用竞对动态比降价更有效']
+  },
+  renewal: {
+    name: '续签 & 高价值售卖',
+    steps: [
+      { label: '关系承接', text: '表明身份+到期提醒+"帮您"的定位' },
+      { label: '唤醒价值', text: '回顾合作数据或展示竞对动态' },
+      { label: '从众+稀缺', text: '限时政策+其他店已续+位置被抢' },
+      { label: '快速闭环', text: '「今天确认就能锁位」' }
+    ],
+    quotes: [
+      { text: '系统分配我来帮{store}继续续充，之前合作数据还不错', note: '"帮您"而非"卖给您"' },
+      { text: '其他几家店都续签了，因为现在有这个政策', note: '从众+限时双重刺激' },
+      { text: '城市+类目只招一家合作，被别人下单了就没了', note: '独家稀缺+时间竞争' },
+      { text: '推广停了一段时间了，{holiday}大节日一般都会做一波', note: '对比空档期+行业惯例' }
+    ],
+    keyPoints: ['断约商户重点在政策刺激而非功能介绍','到期前3天是黄金窗口','多店商户用"其他店已续"制造从众压力']
+  },
+  cold_start: {
+    name: '新户冷启动',
+    steps: [
+      { label: '身份信任', text: '以"运营经理"开场，降低戒备' },
+      { label: '数据切入', text: '用线上流量数据引出话题' },
+      { label: '免费价值', text: '免费服务+曝光范围扩展' },
+      { label: '极简引导', text: '下载APP→登录→确认' }
+    ],
+    quotes: [
+      { text: '来电是想邀请{store}在高德做线上运营，把特色产品免费展示', note: '"免费"消除戒备' },
+      { text: '我看了一下后台，{store}基础流量还不错，有人搜有人看，但电话预定比较少，说明还有很大提升空间', note: '用数据建立专业感' },
+      { text: '平台做流量扶持，曝光范围可覆盖周边5公里左右', note: '具体数字量化价值' },
+      { text: '我先帮你优化一下店铺，差评申诉一下，排名自然就好', note: '免费服务建信任' },
+      { text: '我是负责{store}线上运营的，后续有需求随时找我', note: '长期服务关系定位' }
+    ],
+    keyPoints: ['第一步是"入驻"不是"成交"','路径：免费→服务→效果→付费','操作引导要极具体']
+  },
+  objection_handle: {
+    name: '异议处理',
+    steps: [
+      { label: '接受', text: '不硬推，理解真实顾虑' },
+      { label: '区分', text: '"暂时不做"还是"永远不做"' },
+      { label: '化解', text: '针对性回应' },
+      { label: '退守', text: '做免费服务，留钩子' }
+    ],
+    quotes: [
+      { text: '您可以先申请看一下，一年就做一个平台', note: '降低决策压力' },
+      { text: '还是没想好，还是说您定好了就不做了？', note: '区分犹豫和拒绝' },
+      { text: '我先帮你优化一下店铺，不投放也可以做基础运维', note: '退守免费服务' }
+    ],
+    keyPoints: ['被拒后退一步做免费服务是关键','每次被拒都要留再联系理由','平均3-4次通话成交']
+  }
+};
+
+const OBJECTION_DB = {
+  '没预算': {
+    empathy: '理解，现在每笔支出都要精打细算，您这个想法很正常。',
+    clarify: '方便问一下，主要是觉得预算紧，还是对效果还不确定？（等回答）',
+    response: '广告金相当于您账户里的余额，用多少扣多少，<b>花不完永久不过期</b>。预存6000就能启动，送600广告金+商户通免费1年（美团收2000-4000/年的）。',
+    pivot: '给您算笔账：6000元广告金，平均每天66块，{category}来一桌就回本了。现在有政策加持，过了这个窗口赠送就没了。',
+    closeAfter: '老板，就从最小的6000试水档开始——今天确认，明天我就把推流计划做好，后天开始跑量。您看现在方便确认一下吗？',
+    retreat: '没关系，我先免费帮您把门店信息完善一下。加我微信，后面有合适政策第一时间告诉您。'
+  },
+  '效果不好': {
+    empathy: '之前投了没效果，这个感受完全理解，这是我最需要帮您搞清楚的。',
+    clarify: '能告诉我之前投的是哪个平台、投了多少吗？（等回答）有没有人帮您做过关键词优化？',
+    response: '高德跟美团逻辑不一样——美团顾客主要是点外卖，高德用户是<b>主动搜附近餐厅</b>，搜完直接导航到店，是真实到店流量。而且配专属运营帮您做关键词优化和详情页，不是扔进去自生自灭。',
+    pivot: '{store}后台现在就有导航到店的数据，说明平台上确实有顾客在找您。关键是之前没有把搜索流量承接好。',
+    closeAfter: '这样，我先给您出一个门店诊断报告，告诉您哪里可以优化。然后从最小的档位开始试——效果出来了再加码，效果没出来我帮您免费调整。今天定下来，我今晚就把诊断做好发您。',
+    retreat: '好的，我先帮您做一次免费门店诊断，优化完再决定要不要投放。加我微信，报告发过去？'
+  },
+  '被骗过': {
+    empathy: '太理解了，被坑过之后会很谨慎，这个完全合理。',
+    clarify: '我们是高德官方直营团队，全国统一价格，签的是阿里巴巴官方合同，所有充值可以在高德商家后台实时查看。',
+    response: '充值的广告金就是账户余额，<b>花不完留在账户不过期</b>，不是一次性消耗。我把工号和团队信息发您，随时可以在高德官网核实。',
+    pivot: '您看一下高德官方商户后台，搜索"{store}"能看到现有流量数据，这都是公开的。',
+    closeAfter: '我知道您要核实，正常的。我先把官方合同样本和工号信息发您微信，您确认没问题，今天定下来。您加一下我微信？',
+    retreat: '没关系，我先帮您免费更新门店信息，您体验下服务质量，再决定要不要投放。'
+  },
+  '行情不好': {
+    empathy: '确实，这两年大家都有这种感受，行情确实有压力。',
+    clarify: '但我问您一个问题：行情不好的时候，是主动出击获客容易，还是等着顾客自己上门更容易？（等回答）',
+    response: '越是行情不好，越要抢主动流量。{city}做了推广的{category}店，平均每月多带来100-300桌新客，行情差的时候他们赚的是没做推广的商户的客流。',
+    pivot: '现在入场成本低，等行情好了大家都做推广了，竞争更激烈，拿流量更贵。',
+    closeAfter: '老板，现在做是最划算的时机。今天确认，我今晚把方案做好，您是先从6000元试水，还是直接10000元锁住位置？',
+    retreat: '好的，我先帮您分析周边3公里竞争情况，您心里有个数，加我微信？'
+  },
+  '考虑一下': {
+    empathy: '大决定要考虑，这很正常。',
+    clarify: '帮我确认一下——您主要考虑的是预算问题、效果不确定，还是时机问题？（等回答，针对回答处理）',
+    response: '改天不如今天，这个政策是有时效的——{policy}。今天确认的话，我今晚就把推流计划做好，明天就能开始跑量。',
+    pivot: '您现在的竞对今天也在投放，每多等一天，就是他们多获客一天。这个位置被别人占了再抢就贵了。',
+    closeAfter: '（铁律：必须立即逼单，不能让老板挂电话去"考虑"）\n\n"老板，我给您一个明确的选择：<b>今天确认6000试水档</b>，我今晚做好方案，明天跑量，2周后给您看数据，效果不好我帮您免费调整。还是说，您今天直接上10000主流档，锁住名额？您选哪个？"',
+    retreat: '好的，我先帮您把门店优化好。{holiday}前有新政策第一时间找您，加我微信好吗？'
+  },
+  '不需要': {
+    empathy: '理解，每个老板对营销的规划不一样。',
+    clarify: '我想了解一下，{store}现在主要靠什么渠道获新客？是老客介绍、美团、还是抖音？（等回答）',
+    response: '本地堂食就三大渠道：美团外卖、抖音种草、高德导航。堂食顾客决定去哪家，<b>90%会先打开高德看附近的店</b>，不做不是没流量，是把主动找您的顾客推给竞对了。',
+    pivot: '商户通现在高德完全免费，在美团是收费的。我先帮您免费开通，完善门店信息，这个不花钱——排名也能提升。',
+    closeAfter: '老板，要不这样——我今天先帮您把商户通免费开了、门店信息优化好，这一步不花钱。下次我有好的流量政策，您觉得合适再做付费推广，怎么样？今天这步先走？',
+    retreat: '没关系，我作为您的专属运营顾问，后续有问题随时找我。先加个微信吧？'
+  }
+};
+
+const SCRIPT_TPL = {
+  cold_start: {
+    // ① 开场：前30秒绝不提付费，用高德数据开场，加微信讲好处
+    opener: '老板您好，我是高德地图{city}这边负责{category}商户的运营顾问，请问是{store}的老板吗？\n\n我刚在我们后台看了一下{store}的数据，发现一个情况想第一时间告诉您——咱们门店每天有不少顾客在高德搜{category}的时候看到了{store}，有点击、有浏览，基础流量其实还不错。\n\n您有没有注意到最近来的顾客，有多少是通过高德地图找过来的？',
+    // ② 经营诊断+挖需同步进行（封闭式问题，二选一）
+    hook: '（听老板回答后）嗯，这个很正常。我帮您对比了一下数据，{store}的曝光量在这个区域里算中等水平，但有一个问题——搜{category}关键词时，排在前面的几家店基本都是在咱们平台做了推广的商户，您的店会被挤到后面。\n\n我问您一个问题——您觉得目前{store}获客，主要靠的是老客户复购，还是新客户进店？（等老板回答）\n\n那每周大概有多少桌是新面孔、第一次来的？（等老板估个数字）\n\n如果每周再多来10桌新客，一桌人均{price_self}元，一个月下来大概能多{calc}块钱营业额，您觉得这个目标值得争取吗？',
+    // ③ 报方案：先呼应痛点 → 案例+数字背书 → 帮算账
+    benefit: '老板，根据您刚才说的情况，新客户获取是您现在最大的增长点。\n\n咱们有个案例，{city}附近一家做{category}的商户，之前情况跟{store}差不多，做了推广后头一个月搜索曝光提升了3倍多，来了好几十桌新客，广告费花了不到4000块，净赚了15000多。\n\n高德推广通的逻辑是这样的：顾客在{city}搜"{category}"，您的店就出现在他眼前，搜完直接导航到店，不像刷短视频那种随机流量，是主动找的精准客户。\n\n还有一个好消息——商户通现在高德完全免费开通，在美团是要收2000-4000元一年的，这个名额我先给您申请好。',
+    // ④ 逼单：三档引导选中档，制造紧迫感，不给"考虑"空间
+    close: '方案我根据{store}情况给您准备了三个档：\n• 试水档6000元：广告金全额到账，再送600元，膨胀券/广告券，先测试效果，随时可以看数据；\n• 主流档10000元（大多数老板选这个）：多送1000元广告金，配OCPC智能出价，系统自动帮您找精准客户，膨胀券/广告券，三个月够用；\n• 头部档20000元：额外再送2000元红包，膨胀券/广告券，做{city}{category}头部位置的首选。\n\n大部分老板都从主流档开始，3个月跑完数据再看要不要加码。今天确认的话，明天就能给您把推流计划做好、开始跑量。您看是选试水档先感受一下，还是直接上主流档？',
+    retreat: '好的，那我先帮您把门店信息免费优化一下——图片、标签、差评申诉，这些都不花钱，做完排名会提升一点。我加您微信，把优化报告发给您，过两天看完报告您再决定，怎么样？'
+  },
+  renewal: {
+    opener: '老板您好，我是高德这边负责{store}的运营顾问，系统显示咱们之前有合作记录，我来跟进一下。\n\n最近门店生意怎么样？周末客流量有没有变化？（等老板回答，不要自己先说生意好不好）',
+    hook: '（听老板回答后）我帮您调了一下后台数据，合作期间{store}的搜索曝光和导航到店数都有明显增长，但是停掉之后这部分流量就开始往竞对那边走了。\n\n我看了一下您附近的竞争，目前您周边有几家同品类的店在持续投放，他们的排名稳定排在前三位。老板，您知道吗？顾客在高德搜{category}，一般看到前3家就决定去哪了，超过第3个位置，被点进来的概率就低很多。\n\n您觉得{store}现在的排名在周边算什么水平——靠前、中间、还是偏后？',
+    benefit: '（确认排名后）对，这个位置就是问题所在。之前合作期间这个排名是靠前的，现在停了就下来了。\n\n好消息是现在续签有专项政策：{policy}。另外我们升级了OCPC智能出价，系统自动帮您找最有可能进店的顾客，比之前版本省钱30%左右。\n\n我帮您算一下——假设每天多来5桌，一桌人均{price_self}元，一个月就是{calc}块，三个月回报远超投入。',
+    close: '老板，续签比新户还有额外的老客政策。今天确认的话我今晚就把推流计划做好，明天恢复跑量，周末就能看到效果。\n\n您是直接续主流档10000元，还是往上升一级先锁住位置？（给二选一，不给"考虑"选项）',
+    retreat: '没关系，我先帮您把门店信息更新一下。对了，加我微信的话，后续有专项政策我第一时间通知您，这个有期限的，过了就没了。'
+  },
+  peak_season: {
+    opener: '老板您好，我是高德{city}{category}板块的运营顾问。\n\n马上{holiday}了，{city}这几天节假日搜{category}的量比平时高30-50%，我在后台看了{store}的数据，想告诉您一个情况——您有没有注意到节假日期间来的顾客，跟平时有什么不同？',
+    hook: '（听老板回答后）对，节点流量大，但有一个规律——节假日前3天，顾客就开始在高德搜附近{category}，提前规划了。现在问题是，搜{category}排在前面的几家店都在投放，{store}如果不在前面，这波流量就全被截走了。\n\n您知道吗，{holiday}期间，{city}区域内做了推广的{category}商户平均每天能多来多少桌？（稍作停顿）——数据显示大概多15-40桌，具体看区域竞争。',
+    benefit: '高德出行节针对{city}优质{category}商家有专项流量扶持，{policy}。一个城市同一类目名额有限，先确认的锁先上。\n\n节前3天确认，我今天就把推流计划做好，明天就能开始跑量，正好赶上节假日流量高峰。错过这个节点，下一次这么大的流量窗口要等到下一个节假日了。',
+    close: '我给您对比了两个选择：\n• 不投放：排名维持现状，节假日大流量被前3名的店瓜分，跟平时差不多；\n• 做推广：排名提前，搜{category}的顾客优先看到{store}，节假日多来20-40桌，广告费几天就回来了。\n\n{holiday}前确认，我今天帮您把方案做好，您看先从哪个档位开始——试水档6000还是主流档10000？',
+    retreat: '好的，那我先帮您把节假日门店展示优化一下，图片、简介、特色标签。加我微信，节前有资源位开放第一时间告诉您。'
+  },
+  objection_handle: {
+    opener: '老板您好，我是高德{city}这边的运营顾问，上次跟您联系过。\n\n我回去之后帮您认真研究了一下{store}的情况，有个发现想告诉您，您方便听我说一下吗？',
+    hook: '我做了个对比——{city}{category}在高德上，投放商户和没投放商户的数据差异挺明显的：搜索曝光差了大概3-5倍，导航到店量差了2-4倍。{store}目前的基础流量其实不错，说明平台上真的有顾客在找您，但这部分人最后去了哪里？去了排在前面的那几家做了推广的店。\n\n老板，我想问您一个问题：如果每周能稳定多来10桌新客，您觉得这件事值不值得投入？（封闭式，等回答）',
+    benefit: '（老板认可后）根据{store}的实际情况，上次您的顾虑我都考虑到了。\n\n{policy}，广告金用多少扣多少，花不完留在账户不过期，没有风险。另外有案例——{city}附近做{category}的商户，投了10000元，3个月带来新客160桌以上，算下来每桌获客成本不到62元，比美团还低。\n\n现在还有一个政策：前两周如果效果没达到预期，我给您做免费的关键词优化和详情页调整，确保跑量。',
+    close: '老板，我知道您在考虑，但我跟您说实话——您挂了电话后，周边做了推广的竞对今天又在获客，每多等一天就是让他们多拿一天的流量。\n\n今天确认，我今晚就把方案做好，明天开始跑量。您是先从6000试水感受一下，还是直接10000主流档？选哪个我都支持，但今天要定，这个政策有时效。',
+    retreat: '好的，我先帮您把门店基础优化做好，这个不花钱。我把优化报告发您微信，您看完再说。加一下？后续有好政策我第一时间找您。'
+  }
+};
+
+// ==================== 生成主流程 ====================
+let _lastFullScript = '';
+let _currentData = {};
+
+function generate() {
+  const d = getFormData();
+  const err = validate(d);
+  if (err) { showToast(err, 'error'); return; }
+
+  _currentData = d;
+  const { primary, secondary } = matchScenario(d);
+
+  // Auto-switch to generator mode
+  switchMode('gen');
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('outputArea').style.display = 'block';
+
+  renderOutput(primary, d);
+
+  saveHistory(d, primary);
+  showToast('方案已生成，可直接使用', 'success');
+}
+
+// ==================== 统一输出渲染 ====================
+function renderOutput(primary, d) {
+  const tpl = SCRIPT_TPL[primary];
+  let html = '';
+
+  // === 1. 完整通话脚本 ===
+  html += '<div class="output-section"><h2 style="color:#1d4ed8;font-size:16px;margin-bottom:12px;">📞 完整通话脚本</h2>';
+  if (tpl) {
+    const sections = [
+      { key: 'opener', label: '开场白', icon: '👋' },
+      { key: 'hook', label: '数据切入', icon: '📊' },
+      { key: 'benefit', label: '方案利益', icon: '💰' },
+      { key: 'close', label: '逼单收口', icon: '🎯' },
+      { key: 'retreat', label: '退守留钩', icon: '🪝' }
+    ];
+    let fullText = '';
+    sections.forEach(function(sec) {
+      var text = tpl[sec.key];
+      if (!text) return;
+      text = T(text, d);
+      fullText += '\u3010' + sec.label + '\u3011\n' + text + '\n\n';
+      html += '<div class="script-section"><div class="script-header"><span style="font-size:16px;">' + sec.icon + '</span><h3>' + sec.label + '</h3></div>';
+      html += '<div class="script-body">' + hl(text);
+      // 融入切口话术
+      if (d.cutScript) {
+        if (sec.key === 'opener' && d.cutScript.suggestedHooks.length > 0) {
+          html += '<div class="alt"><div class="alt-label">CRM切口参考</div>';
+          d.cutScript.suggestedHooks.forEach(function(hook) {
+            html += '<div>\u2022 ' + hook + '</div>';
+          });
+          html += '</div>';
+          fullText += '\u3010CRM切口参考\u3011\n' + d.cutScript.suggestedHooks.join('\n') + '\n\n';
+        }
+        if (sec.key === 'hook' && d.cutScript.diagnosis) {
+          html += '<div class="alt"><div class="alt-label">CRM客户诊断</div>' + d.cutScript.diagnosis + '</div>';
+          fullText += '\u3010CRM客户诊断\u3011\n' + d.cutScript.diagnosis + '\n\n';
+        }
+      }
+      // 融入话术分析数据：优秀BD真实开场白
+      if (sec.key === 'opener' && window._topOpeners && window._topOpeners.length > 0) {
+        html += '<div class="alt" style="border-left:3px solid #10b981;"><div class="alt-label" style="color:#10b981;">优秀BD真实开场（数据驱动）</div>';
+        window._topOpeners.slice(0, 3).forEach(function(item) {
+          html += '<div style="margin:4px 0;font-size:12px;">\u2022 ' + item.text;
+          if (item.success_rate) html += ' <span style="color:#10b981;font-size:10px;">成功率' + Math.round(item.success_rate * 100) + '%</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+        fullText += '\u3010优秀BD真实开场\u3011\n' + window._topOpeners.slice(0, 3).map(function(i) { return i.text; }).join('\n') + '\n\n';
+      }
+      // 融入话术分析数据：优秀BD真实切入
+      if (sec.key === 'hook' && window._topHooks && window._topHooks.length > 0) {
+        html += '<div class="alt" style="border-left:3px solid #10b981;"><div class="alt-label" style="color:#10b981;">优秀BD真实切入（数据驱动）</div>';
+        window._topHooks.slice(0, 3).forEach(function(item) {
+          html += '<div style="margin:4px 0;font-size:12px;">\u2022 ' + item.text;
+          if (item.success_rate) html += ' <span style="color:#10b981;font-size:10px;">成功率' + Math.round(item.success_rate * 100) + '%</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+        fullText += '\u3010优秀BD真实切入\u3011\n' + window._topHooks.slice(0, 3).map(function(i) { return i.text; }).join('\n') + '\n\n';
+      }
+      html += '</div></div>';
+    });
+    _lastFullScript = fullText;
+    html += '<button class="btn-copy-all" onclick="copyFullScript()">\ud83d\udccb 一键复制完整脚本</button>';
+  }
+  html += '</div>';
+
+  // === 2. 报价方案 ===
+  html += '<div class="output-section" style="margin-top:24px;"><h2 style="color:#d97706;font-size:16px;margin-bottom:12px;">💼 报价方案</h2>';
+  html += renderPricingContent(d);
+  html += '</div>';
+
+  // === 3. 异议应对 ===
+  html += '<div class="output-section" style="margin-top:24px;"><h2 style="color:#6d28d9;font-size:16px;margin-bottom:12px;">🛡️ 异议应对</h2>';
+  html += renderObjectionContent(d);
+  html += '</div>';
+
+  document.getElementById('outputContent').innerHTML = html;
+}
+
+
+// ==================== 渲染：报价方案（返回HTML字符串） ====================
+function renderPricingContent(d) {
+  let html = '';
+  var targets = d.targets && d.targets.length ? d.targets : ['推广通'];
+  var hasGuangTong = targets.includes('推广通');
+  var hasDingZhan  = targets.includes('品牌顶展');
+
+  // Data insight - 完全代入商户信息
+  html += '<div class="data-summary"><h3>数据洞察 — 为什么' + d.store + '要做推广？</h3>';
+  html += '<div style="font-size:13px;color:#475569;line-height:1.8;margin-top:8px;">';
+  html += '\u2022 <b style="color:#2563eb;">' + d.store + '</b>在高德有基础流量（参考上方截图），有用户在搜索和浏览，说明平台对' + d.category + '品类有真实需求<br>';
+  html += '\u2022 但目前电话预定转化低于周边同品类商户，流量没有充分转化为到店消费<br>';
+  html += '\u2022 周边做了推广的' + d.category + '商户排名靠前、电话量明显高于未推广的商户<br>';
+  html += '\u2022 做推广后曝光覆盖周边约5km，搜索关键词优先展示，提升' + d.store + '被发现的概率';
+  if (d.customer_note) {
+    html += '<br>\u2022 <b style="color:#2563eb;">补充信息：</b>' + d.customer_note.replace(/\n/g, '；');
+  }
+  if (d.price_self && d.price_city) {
+    html += '<br>\u2022 本店人均<b style="color:#2563eb;">' + d.price_self + '元</b> vs 同城人均<b style="color:#d97706;">' + d.price_city + '元</b>';
+    if (parseFloat(d.price_self) < parseFloat(d.price_city)) {
+      html += '（性价比优势明显，推广后转化率更高）';
+    }
+  }
+  if (window._abComparison) {
+    var ab = window._abComparison;
+    html += '<br><br><b style="color:#1d4ed8;">成单通话 vs 未成单对比（数据驱动）:</b><br>';
+    html += '\u2022 <b style="color:#16a34a;">成单通话特征：</b>平均通时' + ab.signed.avg_duration + '秒';
+    if (ab.keyword_diff && ab.keyword_diff.signed_high) html += '，高频关键词：' + ab.keyword_diff.signed_high.join('、');
+    html += '<br>\u2022 <b style="color:#dc2626;">未成单特征：</b>平均通时' + ab.unsigned.avg_duration + '秒';
+    if (ab.keyword_diff && ab.keyword_diff.unsigned_high) html += '，常用但无效词：' + ab.keyword_diff.unsigned_high.join('、');
+  }
+  html += '</div></div>';
+
+  // 合作案例
+  if (d.caseData && d.caseData.storeName) {
+    html += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;margin:16px 0;">';
+    html += '<h3 style="font-size:14px;color:#16a34a;margin-bottom:8px;">📍 附近合作案例</h3>';
+    html += '<div style="font-size:13px;color:#475569;line-height:1.8;">';
+    html += '\u2022 <b style="color:#16a34a;">' + d.caseData.storeName + '</b>';
+    if (d.caseData.cooperationDate) html += '（' + d.caseData.cooperationDate + '开始合作）';
+    if (d.caseData.monthlyOrders) html += '，月均<b>' + d.caseData.monthlyOrders + '</b>订单';
+    if (d.caseData.revenue) html += '，月营收<b>' + d.caseData.revenue + '</b>';
+    if (d.caseData.adSpend) html += '<br>\u2022 广告投入：' + d.caseData.adSpend + '元/月';
+    html += '</div></div>';
+  }
+
+  // ========== 产品组合标签 ==========
+  html += '<div style="display:flex;align-items:center;gap:8px;margin:18px 0 12px;">';
+  html += '<span style="font-size:13px;font-weight:bold;color:#334155;">当前方案组合：</span>';
+  targets.forEach(function(t) {
+    var colors = {'推广通':'#3b82f6','品牌顶展':'#8b5cf6'};
+    var c = colors[t] || '#64748b';
+    html += '<span style="background:' + c + ';color:#fff;font-size:12px;padding:3px 12px;border-radius:20px;font-weight:500;">' + t + '</span>';
+  });
+  html += '</div>';
+
+  // ========== 推广通方案卡片 ==========
+  if (hasGuangTong) {
+    html += '<h3 style="font-size:15px;color:#3b82f6;margin:0 0 10px;font-weight:bold;">推广通 · 三档方案</h3>';
+    html += '<div class="pricing-cards">';
+    html += '<div class="pricing-card"><h4>方案一 \u00b7 基础版</h4><div class="price">\u00a56,000</div><div class="price-unit">预存广告金</div><ul>' +
+      '<li>6000元广告金全额到账</li>' +
+      '<li>商户通免费开通（价值2000-4000元/年）</li>' +
+      '<li>额外送10%广告金(600元)</li>' +
+      '<li>膨胀券/广告券</li>' +
+      '<li>金牌运营1v1服务</li>' +
+      '<li>排名加权(同类目靠前)</li>' +
+      '<li style="color:#64748b;">适合：新店试水/预算有限</li></ul></div>';
+    html += '<div class="pricing-card recommended"><div class="pc-badge">推荐</div><h4>方案二 \u00b7 进阶版</h4><div class="price">\u00a510,000</div><div class="price-unit">预存广告金</div><ul>' +
+      '<li>10000元广告金全额到账</li>' +
+      '<li>商户通免费开通（价值2000-4000元/年）</li>' +
+      '<li>额外送10%广告金(1000元)</li>' +
+      '<li>膨胀券/广告券</li>' +
+      '<li>金牌运营1v1服务</li>' +
+      '<li>排名加权 + OCPC智能出价</li>' +
+      '<li style="color:#1d4ed8;">适合：大部分商户主流选择</li></ul></div>';
+    html += '<div class="pricing-card"><h4>方案三 \u00b7 旗舰版</h4><div class="price">\u00a520,000</div><div class="price-unit">预存广告金</div><ul>' +
+      '<li>20000元广告金全额到账</li>' +
+      '<li>商户通免费开通（价值2000-4000元/年）</li>' +
+      '<li>额外送2000元广告红包</li>' +
+      '<li>膨胀券/广告券</li>' +
+      '<li>金牌运营1v1服务</li>' +
+      '<li>排名加权 + OCPC智能出价</li>' +
+      '<li style="color:#64748b;">适合：商圈头部/品牌连锁</li></ul></div>';
+    html += '</div>';
+    // 推广通 ROI 表
+    html += '<div class="roi-section"><h3>推广通 · 算账逻辑</h3>';
+    html += '<table class="roi-table"><thead><tr><th>维度</th><th>方案一 · 6k</th><th>方案二 · 1w ⭐</th><th>方案三 · 2w</th></tr></thead><tbody>';
+    html += '<tr><td>实际可用广告金</td><td><strong>6,600元</strong></td><td><strong>11,000元</strong></td><td><strong>22,000元</strong></td></tr>';
+    html += '<tr><td>预计可用天数</td><td><strong>~70天</strong></td><td><strong>~92天</strong></td><td><strong>~119天</strong></td></tr>';
+    html += '<tr><td>预计总曝光</td><td><strong>5-10万</strong></td><td><strong>10-20万</strong></td><td><strong>20-40万</strong></td></tr>';
+    html += '<tr><td>预计新增到店</td><td><strong>160-600桌</strong></td><td><strong>320-1050桌</strong></td><td><strong>640-2100桌</strong></td></tr>';
+    html += '<tr><td>预估ROI</td><td><strong>2-8倍</strong></td><td><strong>2.6-8.4倍</strong></td><td><strong>2.6-8.4倍</strong></td></tr>';
+    html += '</tbody></table>';
+    html += '<div style="font-size:11px;color:#94a3b8;margin-top:8px;">以上为行业均值估算，实际因品类、商圈竞争而异。广告金花不完留在账户，不过期。</div></div>';
+  }
+
+  // ========== 品牌顶展方案卡片 ==========
+  if (hasDingZhan) {
+    var dzPolicy = window.DINGZHAN_POLICY;
+    html += '<h3 style="font-size:15px;color:#8b5cf6;margin:24px 0 10px;font-weight:bold;">品牌顶展 · 方案</h3>';
+    if (dzPolicy) {
+      // 产品介绍
+      html += '<div style="background:#faf5ff;border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#4c1d95;line-height:1.7;">' + dzPolicy.intro + '</div>';
+      // 入围门槛
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">';
+      html += '<span style="background:#f3e8ff;color:#7c3aed;font-size:11px;padding:4px 10px;border-radius:12px;">🏪 单店：需高价值POLKA或扫街榜/友商榜资质</span>';
+      html += '<span style="background:#f3e8ff;color:#7c3aed;font-size:11px;padding:4px 10px;border-radius:12px;">🏢 连锁：同品牌同城门店数 ≥ 3</span>';
+      html += '<span style="background:#fef9c3;color:#92400e;font-size:11px;padding:4px 10px;border-radius:12px;">⚠️ 美食垂类仅支持顶展，不支持钻展</span>';
+      html += '</div>';
+      // 方案卡片
+      html += '<div class="pricing-cards">';
+      dzPolicy.tiers.forEach(function(tier) {
+        var isRec = tier.recommended;
+        html += '<div class="pricing-card' + (isRec ? ' recommended' : '') + '">' + (isRec ? '<div class="pc-badge">推荐</div>' : '');
+        html += '<h4>' + tier.name + '</h4><div class="price" style="color:#8b5cf6;">' + tier.price + '</div><div class="price-unit">' + tier.unit + '</div><ul>';
+        tier.perks.forEach(function(p) { html += '<li>' + p + '</li>'; });
+        html += '</ul></div>';
+      });
+      html += '</div>';
+      // 补充说明
+      if (dzPolicy.note) {
+        html += '<div style="font-size:11px;color:#94a3b8;margin-top:6px;">' + dzPolicy.note + '</div>';
+      }
+    } else {
+      html += '<div style="background:#faf5ff;border:1px dashed #c4b5fd;border-radius:10px;padding:16px 18px;color:#7c3aed;font-size:13px;">';
+      html += '⚙️ <b>品牌顶展政策待配置</b>';
+      html += '</div>';
+    }
+  }
+
+  // ========== 营销活动加持 ==========
+  var activities = getRelevantActivities(d.category);
+  if (activities.length > 0) {
+    html += '<div style="margin-top:20px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1px solid #93c5fd;border-radius:12px;padding:18px 20px;">';
+    html += '<h3 style="font-size:15px;color:#1d4ed8;margin-bottom:14px;">🎁 当前平台营销活动加持（' + activities.length + '项可用）</h3>';
+    html += '<div style="font-size:12px;color:#475569;margin-bottom:12px;">以下活动入围后，平台帮您做引流补贴，大部分不需要商户额外出资：</div>';
+    activities.forEach(function(act) {
+      var isPlatform = act.type.indexOf('平台') >= 0;
+      var tagColor = isPlatform ? '#10b981' : '#f59e0b';
+      var tagText = isPlatform ? '平台补贴' : '商户+平台';
+      html += '<div style="background:#fff;border-radius:8px;padding:12px 14px;margin-bottom:10px;border:1px solid #e2e8f0;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+      html += '<span style="font-size:16px;">' + act.icon + '</span>';
+      html += '<b style="font-size:13px;color:#1e293b;">' + act.name + '</b>';
+      html += '<span style="font-size:10px;background:' + tagColor + ';color:#fff;padding:1px 8px;border-radius:10px;">' + tagText + '</span>';
+      html += '<span style="font-size:10px;color:#94a3b8;margin-left:auto;">有效期：' + act.period + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:12px;color:#475569;margin-bottom:6px;">' + act.summary + '</div>';
+      html += '<div style="font-size:11px;color:#64748b;line-height:1.7;">';
+      act.details.forEach(function(dt) { html += '\u2022 ' + dt + '<br>'; });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // ========== 报价话术（4原则结构：呼应痛点→案例背书→算账→三档引导）==========
+  html += '<div style="margin-top:20px;"><h3 style="font-size:14px;color:#d97706;margin-bottom:10px;">💬 报价话术（按顺序说，不要跳段）</h3>';
+  html += '<div class="script-body">';
+
+  // 第一步：呼应痛点（前30秒不提付费）
+  html += '<div style="background:#eff6ff;border-left:3px solid #3b82f6;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:12px;color:#1e3a5f;font-weight:600;">第一步 · 先呼应刚才老板说的痛点</div>';
+  html += '"老板，刚才您提到';
+  if (d.customer_note) {
+    html += '<span class="hl">' + d.customer_note.replace(/\n/g, '；') + '</span>';
+  } else {
+    html += '<span class="hl">新客获取难/竞对在抢流量</span>';
+  }
+  html += '，我帮您看了数据，这个问题我来告诉您怎么解决。"<br><br>';
+
+  // 第二步：案例+数字背书
+  html += '<div style="background:#f0fdf4;border-left:3px solid #16a34a;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:12px;color:#14532d;font-weight:600;">第二步 · 同品类案例+具体数字</div>';
+  if (d.caseData && d.caseData.storeName) {
+    html += '"您附近的<span class="hl">' + d.caseData.storeName + '</span>跟' + d.store + '情况差不多';
+    if (d.caseData.cooperationDate) html += '，' + d.caseData.cooperationDate + '开始合作';
+    if (d.caseData.monthlyOrders) html += '，现在<span class="hl">月均' + d.caseData.monthlyOrders + '订单</span>';
+    if (d.caseData.revenue) html += '，月营收<span class="hl">' + d.caseData.revenue + '</span>';
+    html += '。他当时就是解决了和您一样的问题。"<br><br>';
+  } else {
+    html += '"举个' + d.city + '这边的真实案例——同品类一家商户，投了<span class="hl">10000元</span>推广，3个月内搜索曝光提升<span class="hl">3倍多</span>，带来新客<span class="hl">160桌以上</span>，按您这里人均' + (d.price_self || '80') + '元算，光新客营收就超过<span class="hl">12000元</span>，广告费当月就回来了。"<br><br>';
+  }
+
+  if (hasGuangTong) {
+    // 第三步：算账（推广通）
+    html += '<div style="background:#fefce8;border-left:3px solid #d97706;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:12px;color:#78350f;font-weight:600;">第三步 · 帮老板算账（建立价值认知）</div>';
+    html += '"我帮' + d.store + '算一笔账——方案二10000元广告金，<span class="hl">实际到账11000元</span>（送10%），加上膨胀券/广告券，每天平均花100多块钱。';
+    if (d.price_self) {
+      var dailyCost = Math.round(10000 / 90);
+      var tablesNeeded = Math.ceil(dailyCost / parseFloat(d.price_self));
+      html += '<span class="hl">一天来' + tablesNeeded + '桌就回本</span>，';
+    }
+    html += '广告金<span class="hl">用多少扣多少，花不完不过期</span>，放在账户里随时用。"<br><br>';
+
+    // 第四步：三档引导选中档
+    html += '<div style="background:#faf5ff;border-left:3px solid #8b5cf6;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:12px;color:#4c1d95;font-weight:600;">第四步 · 三档报价，引导中档（给二选一，不要开放问）</div>';
+    html += '"根据' + d.store + '的情况，我给您准备了三个档：<br>';
+    html += '• <span class="hl">试水档6000元</span>：送600广告金+膨胀券/广告券，先感受效果——适合对平台还不熟的老板；<br>';
+    html += '• <span class="hl">主流档10000元</span>（<b style="color:#d97706;">大多数' + d.city + d.category + '商户选这个</b>）：送1000广告金+OCPC智能出价+膨胀券/广告券，3个月够跑出效果；<br>';
+    html += '• <span class="hl">头部档20000元</span>：额外送2000元红包+膨胀券/广告券，要做' + d.city + d.category + '搜索第一的选这个。<br><br>';
+    html += '您是先从试水档6000感受一下，还是直接用主流档10000锁住位置？"<br><br>';
+  }
+
+  if (hasDingZhan) {
+    var dzP = window.DINGZHAN_POLICY;
+    html += '<div style="background:#faf5ff;border-left:3px solid #8b5cf6;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:12px;color:#4c1d95;font-weight:600;">品牌顶展 · 搜索置顶报价</div>';
+    if (dzP && dzP.script) {
+      html += dzP.script
+        .replace(/\{store\}/g, d.store)
+        .replace(/\{city\}/g, d.city)
+        .replace(/\{category\}/g, d.category)
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>') + '<br><br>';
+    } else {
+      html += '"老板，除了推广通，还有一个产品——<span class="hl">品牌顶展</span>。顾客在' + d.city + '搜"' + d.category + '"的时候，您的店直接出现在<span class="hl">搜索结果最顶部</span>，抢在竞争对手前面被看见。单店版<span class="hl">10000元/3个月</span>，品牌连锁版<span class="hl">30000元/3个月</span>，覆盖同城3个门店。"<br><br>';
+    }
+  }
+
+  // 营销活动话术
+  if (activities.length > 0) {
+    html += '<div style="background:#f0fdf4;border-left:3px solid #10b981;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:12px;color:#064e3b;font-weight:600;">加码 · 平台营销活动（大部分不用额外出钱）</div>';
+    html += '"除了广告，平台现在还有<span class="hl">' + activities.length + '个营销活动</span>可以叠加，大部分不用您额外花钱，平台帮您补贴引流：<br>';
+    activities.slice(0, 3).forEach(function(act) {
+      html += '• <span class="hl">【' + act.name + '】</span>' + act.script + '<br>';
+    });
+    html += '这些叠加上去，相当于<span class="hl">多重流量助攻</span>，比单纯做广告效果更好。"<br><br>';
+  }
+
+  html += '</div></div>';
+
+  return html;
+}
+
+
+function hl(text) {
+  return text
+    .replace(/(\d+[\.\d]*(?:万|亿|个|桌|km|公里|%|元|天|次|倍))/g, '<span class="hl">$1</span>')
+    .replace(/(不过期|免费|限时|独家|优先|赠送|金牌运维)/g, '<span class="hl">$1</span>');
+}
+
+// ==================== 渲染：异议应对（返回HTML字符串） ====================
+function renderObjectionContent(d) {
+  const selected = d.objections || [];
+  const allKeys = Object.keys(OBJECTION_DB);
+  const sorted = [...allKeys.filter(k => selected.includes(k)), ...allKeys.filter(k => !selected.includes(k))];
+
+  let html = '';
+  sorted.forEach(key => {
+    const obj = OBJECTION_DB[key];
+    const isSel = selected.includes(key);
+    const fill = k => T(obj[k], d);
+    html += '<div class="objection-card ' + (isSel ? 'highlighted' : '') + '">';
+    html += '<div class="objection-header" onclick="toggleObjBody(this)"><h4>"\u201c' + key + '\u201d"</h4>';
+    // 追加真实异议占比
+    if (window._objectionDist) {
+      var distItem = window._objectionDist.find(function(dd) { return dd.type === key; });
+      if (distItem) {
+        html += '<span style="font-size:10px;color:#64748b;margin-left:8px;font-weight:normal;">实际占比 ' + distItem.pct + '%</span>';
+      }
+    }
+    html += (isSel ? '<span class="tag">\u5546\u6237\u5df2\u63d0\u51fa</span>' : '') + '</div>';
+    html += '<div class="objection-body"' + (!isSel ? ' style="display:none;"' : '') + '>';
+    html += '<div class="objection-step"><div class="step-label">共情</div><p>' + fill('empathy') + '</p></div>';
+    html += '<div class="objection-step"><div class="step-label">澄清</div><p>' + fill('clarify') + '</p></div>';
+    html += '<div class="objection-step"><div class="step-label">应对</div><p>' + hl(fill('response')) + '</p></div>';
+    html += '<div class="objection-step"><div class="step-label">转化</div><p>' + hl(fill('pivot')) + '</p></div>';
+    // 异议处理后立即逼单（铁律）
+    if (obj.closeAfter) {
+      html += '<div class="objection-step" style="background:#fff7ed;border:1px solid #fb923c;border-radius:8px;padding:8px 12px;margin-top:6px;">';
+      html += '<div class="step-label" style="background:#ea580c;">⚡ 立即逼单</div>';
+      html += '<p style="color:#7c2d12;font-weight:500;">' + hl(fill('closeAfter')).replace(/\n\n/g,'<br>') + '</p>';
+      html += '<div style="font-size:10px;color:#9a3412;margin-top:4px;">⚠️ 铁律：异议处理完必须立即逼单，不给"考虑"空间，挂了电话80%不会再接</div>';
+      html += '</div>';
+    }
+    html += '<div class="objection-step"><div class="step-label">退守</div><p>' + fill('retreat') + '</p></div>';
+    // 追加真实BD回应案例
+    if (window._realResponses && window._realResponses[key]) {
+      html += '<div class="objection-step"><div class="step-label" style="background:#10b981;">实战</div>';
+      html += '<p style="font-size:12px;color:#475569;">';
+      window._realResponses[key].slice(0, 2).forEach(function(item) {
+        html += '\u2022 <b>[' + item.result + ']</b> ' + item.bd_response + '<br>';
+      });
+      html += '</p></div>';
+    }
+    html += '</div></div>';
+  });
+  return html;
+}
+
+function toggleObjBody(header) {
+  const body = header.nextElementSibling;
+  body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+// ==================== Copy ====================
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('\u5df2\u590d\u5236', 'success')).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToast('\u5df2\u590d\u5236', 'success');
+  });
+}
+function copyFullScript() { copyText(_lastFullScript); }
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type + ' show';
+  setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+// ==================== 话术分析数据加载 ====================
+function loadSpeechFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      window._speechAnalysis = data;
+      localStorage.setItem('speech_analysis', JSON.stringify(data));
+      applySpeechData(data);
+      document.getElementById('speechDataStatus').textContent = '已加载 v' + (data.version || '?');
+      showToast('话术分析数据已加载 (' + (data.version || '') + ')', 'success');
+    } catch(err) {
+      showToast('JSON解析失败: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applySpeechData(data) {
+  if (data.objection_distribution) window._objectionDist = data.objection_distribution;
+  if (data.top_openers) window._topOpeners = data.top_openers;
+  if (data.top_hooks) window._topHooks = data.top_hooks;
+  if (data.real_objection_responses) window._realResponses = data.real_objection_responses;
+  if (data.ab_comparison) window._abComparison = data.ab_comparison;
+}
+
+function clearSpeechData() {
+  window._speechAnalysis = null;
+  window._objectionDist = null;
+  window._topOpeners = null;
+  window._topHooks = null;
+  window._realResponses = null;
+  window._abComparison = null;
+  localStorage.removeItem('speech_analysis');
+  document.getElementById('speechDataStatus').textContent = '';
+  showToast('话术数据已清除', 'success');
+}
+
+// 页面加载时自动恢复缓存
+(function() {
+  var cached = localStorage.getItem('speech_analysis');
+  if (cached) {
+    try {
+      var data = JSON.parse(cached);
+      window._speechAnalysis = data;
+      applySpeechData(data);
+      var statusEl = document.getElementById('speechDataStatus');
+      if (statusEl) statusEl.textContent = '缓存 v' + (data.version || '?');
+    } catch(e) {}
+  }
+})();
+
+// ==================== History ====================
+function saveHistory(d, p) {
+  let h = JSON.parse(localStorage.getItem('nego_history2') || '[]');
+  h.unshift({ store: d.store, city: d.city, category: d.category, status: d.status, scenario: SCENARIOS[p].name, time: new Date().toLocaleString(), data: d });
+  if (h.length > 10) h = h.slice(0, 10);
+  localStorage.setItem('nego_history2', JSON.stringify(h));
+}
+
+function showHistory() {
+  const h = JSON.parse(localStorage.getItem('nego_history2') || '[]');
+  const c = document.getElementById('historyList');
+  if (!h.length) { c.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px;">暂无记录</div>'; }
+  else { c.innerHTML = h.map((item, i) => '<div class="history-item" onclick="loadHistory(' + i + ')"><div class="hi-name">' + item.store + '</div><div class="hi-meta">' + item.city + ' \u00b7 ' + item.category + ' \u00b7 ' + item.status + ' \u00b7 ' + item.time + '</div></div>').join(''); }
+  document.getElementById('historyModal').classList.add('show');
+}
+function closeHistory() { document.getElementById('historyModal').classList.remove('show'); }
+function loadHistory(i) {
+  const h = JSON.parse(localStorage.getItem('nego_history2') || '[]');
+  const d = h[i] && h[i].data;
+  if (!d) return;
+  ['store','city','policy','comp_name','comp_status'].forEach(k => {
+    const el = document.getElementById('f_' + k);
+    if (el) el.value = d[k] || '';
+  });
+  ['category','status'].forEach(k => {
+    const el = document.getElementById('f_' + k);
+    if (el) el.value = d[k] || '';
+  });
+  // 恢复售卖目标多选
+  var targets = d.targets || (d.target ? [d.target] : ['推广通']);
+  document.querySelectorAll('#f_targets .checkbox-item').forEach(el => {
+    if (targets.includes(el.dataset.val)) el.classList.add('checked');
+    else el.classList.remove('checked');
+  });
+  // 恢复异议勾选
+  document.querySelectorAll('#f_objections .checkbox-item').forEach(el => {
+    if (d.objections && d.objections.includes(el.dataset.val)) el.classList.add('checked');
+    else el.classList.remove('checked');
+  });
+  closeHistory();
+  showToast('\u5df2\u52a0\u8f7d', 'info');
+}
+
+document.getElementById('historyModal').addEventListener('click', function(e) { if (e.target === this) closeHistory(); });
+
+// ==================== 模式切换 ====================
+function switchMode(mode) {
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  document.getElementById('genMode').style.display = mode === 'gen' ? 'block' : 'none';
+  document.getElementById('refMode').style.display = mode === 'ref' ? 'block' : 'none';
+  if (mode === 'ref' && !window._refInited) {
+    initRef();
+  }
+  if (mode === 'ref') {
+    renderCurrentPhase();
+  }
+}
+
+// ==================== 速查数据 ====================
+const PHASES = [
+  { id: 'wall', num: '附', title: '快速参考墙', meta: '打电话前先看一眼', barStyle: 'background:linear-gradient(135deg,#64748b,#475569);' },
+  { id: 'p1', num: '01', title: '开场前准备', meta: '30秒 · 查完信息再拨号', barStyle: 'background:linear-gradient(135deg,#3b82f6,#2563eb);' },
+  { id: 'p2', num: '02', title: '破冰与门店诊断', meta: '0-120秒 · 一气呵成', barStyle: 'background:linear-gradient(135deg,#06b6d4,#0891b2);' },
+  { id: 'p3', num: '03', title: '需求挖掘', meta: '让老板自己说痛点', barStyle: 'background:linear-gradient(135deg,#10b981,#059669);' },
+  { id: 'p4', num: '04', title: '价值呈现与方案推介', meta: '让老板知道钱花在哪', barStyle: 'background:linear-gradient(135deg,#f59e0b,#d97706);' },
+  { id: 'p5', num: '05', title: '异议处理', meta: '打消顾虑 · 通用公式', barStyle: 'background:linear-gradient(135deg,#8b5cf6,#7c3aed);' },
+  { id: 'p6', num: '06', title: '逼单成交', meta: '当通成交或锁名额', barStyle: 'background:linear-gradient(135deg,#ec4899,#db2777);' },
+  { id: 'p7', num: '07', title: '关单与后续跟进', meta: '成交后 · 确保不反悔', barStyle: 'background:linear-gradient(135deg,#1e293b,#334155);' },
+  { id: 'p8', num: '附', title: '合作后运营参考', meta: '平台玩法与红包补贴', barStyle: 'background:linear-gradient(135deg,#64748b,#475569);' }
+];
+
+function getPhaseContent(phaseId, d) {
+  var s = d.store || '[商户名]';
+  var city = d.city || '[城市]';
+  var cat = d.category || '[品类]';
+  var comp = d.comp_name || '[竞对]';
+  var policy = d.policy || '预存即送';
+  var holiday = d.holiday || '节假日';
+
+  switch(phaseId) {
+    case 'wall': return `
+<div class="row row-4">
+  <div class="cell gyl"><div class="cell-title">查5项再拨号</div><div class="cell-body">名称/品类/人均<br>评分(&lt;4→口碑话术)<br>排名(前5/中/20后)<br>竞对投放(有/无/密)<br>年限(新→冷启动)</div></div>
+  <div class="cell gyl"><div class="cell-title">破冰3路径</div><div class="cell-body"><span class="tag tag-g">A好</span>恭喜+防截流<br><span class="tag tag-r">B差</span>共情+截流<br><span class="tag tag-y">C一般</span>数据+机会</div></div>
+  <div class="cell gyl"><div class="cell-title">诊断5维度</div><div class="cell-body">曝光低→截流<br>评分卡→评论<br>没标签→装修差<br>有差评→没人管<br>竞对广告→被截流</div></div>
+  <div class="cell gyl"><div class="cell-title">挖需4问</div><div class="cell-body">①客流量少了？<br>②竞对做推广？<br>③获客靠什么？<br>④多5桌意味着什么？</div></div>
+</div>
+<div class="row row-4">
+  <div class="cell gyl"><div class="cell-title">挖需时讲·核心价值</div><div class="cell-body">客流少→日均5-10桌<br>获客难→与美团重叠37%<br>嫌贵→点击1元起/补贴<br><span style="color:#64748b;font-size:10px;">针对痛点讲，不要干背</span></div></div>
+  <div class="cell gyl"><div class="cell-title">展示6位置</div><div class="cell-body">附近搜首屏<br>导航过程推荐<br>详情页优先<br>关键词匹配<br>导航结束推荐<br>截流同行门店</div></div>
+  <div class="cell gyl"><div class="cell-title">上方案3档区别</div><div class="cell-body"><strong>6000</strong>基础曝光无OCPC<br><strong>10000</strong>⭐OCPC智能出价<br><strong>20000</strong>区域保护+1v1<br><span style="color:#64748b;font-size:10px;">核心差在OCPC和区域保护</span></div></div>
+  <div class="cell gyl"><div class="cell-title">逼单4政策</div><div class="cell-body">①折扣申请<br>②高德甄选标签<br>③红包补贴(180-18)<br>④OCPC效果保障</div></div>
+</div>
+<div class="row row-4">
+  <div class="cell gyl"><div class="cell-title">异议6场景</div><div class="cell-body">贵 / 没效果 / 生意好<br>考虑 / 没时间 / 没预算</div></div>
+  <div class="cell gyl"><div class="cell-title">逼单6策略</div><div class="cell-body">限时补贴 / 竞品截流<br>零风险 / 当通成交⭐<br>二选一 / 假设成交</div></div>
+  <div class="cell gyl"><div class="cell-title">FAB公式</div><div class="cell-body"><strong>F特性</strong>→产品是什么<br><strong>A优势</strong>→比别家好在哪<br><strong>B利益</strong>→对商户有什么好处</div></div>
+  <div class="cell gyl"><div class="cell-title">时间分配</div><div class="cell-body">准备30秒→破冰诊断90秒→需求2分→价值2分→异议2分→逼单2分</div></div>
+</div>`;
+
+    case 'p1': return `
+<div class="row row-4">
+  <div class="cell bl"><div class="cell-title">查5项信息</div><div class="cell-body">①名称/品类/人均<br>②评分(&lt;4→口碑话术)<br>③排名(前5/中/20后)<br>④竞对投放(有/无/密)<br>⑤年限(新→冷启动)</div></div>
+  <div class="cell gl"><div class="cell-title">A类 · 生意好</div><div class="cell-body"><span class="tag tag-g">评分≥4.5</span><br>排名靠前 评论多<br>→ 恭喜+防截流</div></div>
+  <div class="cell rl"><div class="cell-title">B类 · 生意差</div><div class="cell-body"><span class="tag tag-r">评分&lt;4</span><br>排名20后 负面多<br>→ 共情+竞品截流</div></div>
+  <div class="cell yl"><div class="cell-title">C类 · 生意一般</div><div class="cell-body"><span class="tag tag-y">4.0-4.4</span><br>排名中等<br>→ 数据+机会分析</div></div>
+</div>
+<div class="row row-4">
+  <div class="cell pl"><div class="cell-title">准备2个案例</div><div class="cell-body">按品类选最接近案例<br>必须有数字：曝光/订单/增长率<br>提前写在便利贴上</div></div>
+  <div class="cell yl"><div class="cell-title">调整心态</div><div class="cell-body">我不是来推销的<br>我是来帮商户诊断的<br><strong>默念：</strong>我有数据，我知道竞对在做什么，我能帮到他</div></div>
+  <div class="cell rl"><div class="cell-title">常见错误</div><div class="cell-body">什么都不查，拿起电话就拨，接通后现想词。通时通次再多也没用。</div></div>
+  <div class="cell gyl"><div class="cell-title">核心原则</div><div class="cell-body">没查完5项信息<br>绝不拨号<br><strong>准备>拨打</strong></div></div>
+</div>
+<div class="principle-bar"><div class="pt">准备4原则</div>①查商户5项信息再拨号 ②判断ABC三类选对应路径 ③准备2个带数字的同品类案例 ④默念"我是来诊断问题的"</div>`;
+
+    case 'p2': return `
+<div class="hint hint-b">实战逻辑：前置破冰 → 顺手加微信 → 门店经营分析 → 同行案例对比 → 同步挖需。这些动作是同时进行的，不要像背课文一样分段。</div>
+<div class="row row-2">
+  <div class="cell bl">
+    <div class="cell-title">前置破冰 · 用高德数据开场</div>
+    <div class="cell-body">
+      <strong>① 门头图+导航量：</strong>"我刚在高德看了<b>${s}</b>，门头图挺显眼的，最近导航量也不少。高德过来的客人多不多？"<br><br>
+      <strong>② 点击量+电话量：</strong>"<b>${s}</b>最近在高德点击量有XX个，电话量XX个。使用过程中有没有遇到什么问题？"<br><br>
+      <strong>③ 流量变化：</strong>"近期${cat}品类在高德流量暴涨，搜的人特别多。您目前接到的顾客多不多？"
+    </div>
+  </div>
+  <div class="cell gl">
+    <div class="cell-title">开场破冰 · 3条路径</div>
+    <div class="cell-body">
+      <span class="tag tag-g">A生意好</span> "恭喜您评分挺高！不过周边同类店最近投了广告，曝光比您高不少。虽然现在生意好，长期被截流会影响排名。"<br><br>
+      <span class="tag tag-r">B生意差</span> "今年大环境不容易，但我看了${s}周边，关键问题——周边同类店已在高德推广，每天多5-8桌。您没做曝光，等于每天被截走十几桌。"<br><br>
+      <span class="tag tag-y">C一般</span> "我看了${s}数据，评分和排名还有很大提升空间。同品类推广后平均每天多5-7桌，一个月150-200桌新增。"
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell yl">
+    <div class="cell-title">顺手加微信 · 只讲好处</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "老板，电话里确实说不清，我需要把${s}的经营数据和周边同品类案例发给您，这样您看得更直观。这个得通过我的企业微信发给您，您微信号多少，我现在加您？"<br><br>
+        <strong>加微信后发3样：</strong>①企业微信名片（验真）②${s}数据+周边案例截图 ③语音："数据和案例发您了，您看一下，有问题随时问我。"<br><br>
+        <strong>企业微信验真：</strong>"您看认证信息里写的是'高德地图'，我上班就在阿里中心，您随时可以到阿里中心找我。"
+      </div>
+    </div>
+  </div>
+  <div class="cell rl">
+    <div class="cell-title">错误示范 · 不要一上来就问</div>
+    <div class="cell-body">
+      <strong>不要问：</strong>"生意怎么样？""客人多不多？""店里忙不忙？"<br><br>
+      <strong>正确做法：</strong>先用高德数据开场 → 老板觉得你专业 → 降低防备 → 自然过渡到经营分析
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell bl" style="flex:1;">
+    <div class="cell-title">门店经营分析 · 看到什么说什么（同步挖需）</div>
+    <div class="cell-body">
+      <table class="mini-table">
+        <tr><td><strong>曝光高但导航低</strong></td><td>→ 附近门店在截流，图文质量差<br><strong>怎么说：</strong>"${s}评分和关键词都挺好，但导航率比周边低，旁边几家店在做推广，客人搜的时候先看到他们。"<br><strong>同步问：</strong>"您现在主要靠什么渠道获客？老客多还是新客多？"</td></tr>
+        <tr><td><strong>评分4.5上不去</strong></td><td>→ 评论质量没跟上，差评没人管<br><strong>怎么说：</strong>"评分卡住一般是评论更新不够，差评回复不及时会影响转化。这个您不用操心，我们帮您维护。"<br><strong>同步问：</strong>"您平时关注网上评价吗？有没有遇到过差评困扰？"</td></tr>
+        <tr><td><strong>没有金牌标签</strong></td><td>→ 质量分低，装修差，信息不全<br><strong>怎么说：</strong>"${s}现在没有金牌标签，有标签的店会优先展示。我们合作后第一件事就是帮您补全信息、装修店铺。"<br><strong>同步问：</strong>"您店开业多久了？线上信息是自己管还是有人帮忙？"</td></tr>
+        <tr><td><strong>竞对在您页面打广告</strong></td><td>→ 同行在截您的客流<br><strong>怎么说：</strong>"您打开高德搜一下${s}，往下拉能看到${comp}的广告。客人本来要找您，结果被拉走了。"<br><strong>同步问：</strong>"周边那家${comp}您知道吗？他们最近生意怎么样？"</td></tr>
+        <tr><td><strong>差评没人管</strong></td><td>→ 影响评分和转化<br><strong>怎么说：</strong>"我看${s}最近有条差评还没回复，这个很影响转化。我们帮您做差评回复和评论维护。"<br><strong>同步问：</strong>"您平时怎么处理的？有没有感觉差评影响了生意？"</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell gl">
+    <div class="cell-title">同行案例对比 · 激发兴趣</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "${s}旁边那家${comp}，跟您同品类，上个月开始在高德做推广。之前月订单299笔，现在1020笔，翻了3倍多。其实他们产品不一定比您好，主要是线上曝光做得早。您要是现在开始做，赶上${holiday}，效果只会更好。"
+      </div>
+      <span style="color:#64748b;font-size:10px;">→ 用具体店名+具体数字，让老板觉得真实可信</span>
+    </div>
+  </div>
+  <div class="cell yl">
+    <div class="cell-title">同步挖需 · 边分析边问</div>
+    <div class="cell-body">
+      <strong>原则：</strong>分析数据和问问题不要分开做，是一件事的两个面<br><br>
+      说"${s}导航率比周边低" → 接着问"您现在主要靠老客还是路过客？"<br>
+      说"${s}被竞对截流了" → 接着问"您知道旁边${comp}最近生意怎么样吗？"<br>
+      说"${s}没有金牌标签" → 接着问"您店开业多久了？"
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell gl"><div class="cell-title">通过信号 → 进需求挖掘</div><div class="cell-body">愿意回答你的问题 / 问"你们怎么收费" / 吐槽生意不好 / 说"你说说看"</div></div>
+  <div class="cell rl"><div class="cell-title">失败信号 → 结束或再约</div><div class="cell-body">"不需要""别打来了" / 连续3次"没兴趣" / 直接挂断 / 说"不方便"→给具体时间再约</div></div>
+</div>
+<div class="principle-bar"><div class="pt">破冰诊断4原则</div>①先用高德数据开场，不要上来就问"生意好不好" ②加微信只讲好处 ③经营分析和挖需是一件事，边分析边问 ④用同行案例+具体数字激发兴趣</div>`;
+
+    case 'p3': return `
+<div class="hint hint-g">铁律：商户自己说出来的痛点，比你指出来的说服力强10倍。挖需不是单独一个环节，是边做门店诊断边问出来的。</div>
+<div class="row row-2">
+  <div class="cell bl">
+    <div class="cell-title">提问1 · 客流量（完整话术）</div>
+    <div class="cell-body">
+      <strong>标准问法：</strong>"老板，最近${s}客流量怎么样？有没有感觉客人比以前少了？"<br><br>
+      <strong>老板说"确实少了"：</strong><br>"大概少了多少？是工作日少了还是周末更明显？"<br><br>
+      <strong>老板说"还行"：</strong><br>"那新客多还是老客多？主要靠回头客还是路过客？"<br><br>
+      <strong>老板说"比以前好多了"：</strong><br>"那太好了！不过我想提醒您一下，${s}周边竞对最近在高德上开始做推广了..."
+    </div>
+  </div>
+  <div class="cell bl">
+    <div class="cell-title">提问2 · 竞对（完整话术）</div>
+    <div class="cell-body">
+      <strong>标准问法：</strong>"周边同类型的店，您平时关注吗？比如附近那家${comp}，您知道他们在高德或者美团上做推广了吗？"<br><br>
+      <strong>老板说"知道，他们生意不错"：</strong><br>"对，我查了${comp}最近一个月在高德上的曝光量，比${s}高了大概X倍。其实他们产品不一定比您好，主要是线上曝光做得早。"<br><br>
+      <strong>老板说"不清楚"：</strong><br>"没关系，这个我来帮您盯着。我查了一下，${s}周边已经有X家店在高德上做了推广..."
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell bl">
+    <div class="cell-title">提问3 · 获客结构（完整话术）</div>
+    <div class="cell-body">
+      <strong>标准问法：</strong>"${s}现在主要靠什么渠道获客？是老客介绍多，还是自然路过多，还是网上来的多？"<br><br>
+      <strong>主要靠老客：</strong><br>"老客多是好事，说明您产品过硬。但老客总会有饱和的一天，需要持续有新客进来。"<br><br>
+      <strong>主要靠路过：</strong><br>"路过客确实重要，但现在消费者出门前都会先在高德上搜一下'附近${cat}'，如果搜不到${s}，路过客也就少了。"<br><br>
+      <strong>已经做了美团/抖音：</strong><br>"那您对线上推广已经有认知了。高德和美团的区别在于，美团是'想好吃什么再去搜'，高德是'正在路上、马上要吃饭'——两个场景完全不一样，可以互补。"
+    </div>
+  </div>
+  <div class="cell pl">
+    <div class="cell-title">提问4 · 价值锚定（完整话术）</div>
+    <div class="cell-body">
+      <strong>标准问法：</strong>"老板，假设每天能多来5到7桌新客人，一个月就是150到200桌，对${s}来说意味着什么？"<br><br>
+      <span style="color:#64748b;font-size:10px;">→ 最关键一问！让老板自己算账</span><br><br>
+      <strong>老板说"那当然好啊"之后：</strong><br>"对，而且这5到7桌不是凭空来的，是高德上每天搜${cat}的用户，本来就应该看到${s}，结果现在被${comp}截走了。我们做的，就是把本该属于您的客流抢回来。"
+    </div>
+  </div>
+</div>
+<div class="row row-3">
+  <div class="cell bl">
+    <div class="cell-title">核心价值① · 数量（针对客流少）</div>
+    <div class="cell-body">
+      <strong>日均新增5-10桌</strong>（热门城市10桌，普通城市5桌）<br>
+      <strong>日均曝光5000-10000</strong><br>
+      <strong>高德10亿月活</strong>，每天新客搜${cat}<br>
+      <span style="color:#64748b;font-size:10px;">→ 不做=每天被截走5-10桌</span>
+    </div>
+  </div>
+  <div class="cell gl">
+    <div class="cell-title">核心价值② · 质量（针对获客难）</div>
+    <div class="cell-body">
+      <strong>与美团重叠仅37%</strong>，大多是车主男性<br>
+      <strong>消费实力高</strong>，正价客户多<br>
+      <strong>预订占比70%以上</strong><br>
+      <span style="color:#64748b;font-size:10px;">→ 高德是和美团完全不同的两拨人</span>
+    </div>
+  </div>
+  <div class="cell yl">
+    <div class="cell-title">核心价值③ · 成本（针对嫌贵）</div>
+    <div class="cell-body">
+      <strong>点击出价1元起</strong>，热门城市1.5元<br>
+      <strong>获客成本20-30元/桌</strong>，优于其他平台<br>
+      <strong>平台补贴</strong>：180-20、抽免单、霸王餐全额出资<br>
+      <span style="color:#64748b;font-size:10px;">→ 比传单便宜，还有平台补贴</span>
+    </div>
+  </div>
+</div>
+<div class="principle-bar"><div class="pt">挖需4原则</div>①挖需和经营分析是一件事，边分析边问 ②用封闭式问题易得具体答案 ③给二选一选项不开放问 ④每问一句等老板说完再追问</div>`;
+
+    case 'p4': return `
+<div class="hint hint-b">上方案时针对老板痛点讲，不要干背功能。不要承诺榜单排名。</div>
+<div class="row row-2">
+  <div class="cell bl">
+    <div class="cell-title">展示位置 · 客人能在哪看到${s}</div>
+    <div class="cell-body">
+      ①<strong>高德附近搜</strong> → 搜"附近${cat}"首屏出现<br>
+      ②<strong>导航页面推荐</strong> → 导航过程中弹出推荐<br>
+      ③<strong>门店详情页</strong> → 合作店首屏展示，带优惠标签<br>
+      ④<strong>关键词匹配</strong> → 搜"${cat}"优先看到${s}<br>
+      ⑤<strong>导航结束推荐</strong> → 到达目的地后推荐附近门店<br>
+      ⑥<strong>截流同行</strong> → 在${comp}门店下展示${s}的广告
+    </div>
+  </div>
+  <div class="cell gl">
+    <div class="cell-title">合作后${s}门店效果</div>
+    <div class="cell-body">
+      ①<strong>优先排序</strong>：搜索结果优先展示，带"推广"标识<br>
+      ②<strong>优惠展示</strong>：团购套餐、代金券、买赠活动<br>
+      ③<strong>经营评分</strong>：金冠/金牌标识，评分排名突出<br>
+      ④<strong>商户通装修</strong>：精美图文、菜单、环境照<br>
+      ⑤<strong>活动标签</strong>：限时优惠、新客专享等标签<br>
+      <span style="color:#64748b;font-size:10px;">→ 加微信后发这些截图给老板看</span>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell bl" style="flex:1;">
+    <div class="cell-title">推介4步话术</div>
+    <div class="cell-body">
+      ①<strong>痛点呼应：</strong>"刚才您也说了，${s}新客少了，${comp}在截流。"<br>
+      ②<strong>方案概述：</strong>"高德精准推广，让搜${cat}的人优先看到${s}。"<br>
+      ③<strong>案例背书：</strong>"唐山小龙虾店：月订单299→1020笔(↑241%)，日均营收106→594元(↑460%)。"<br>
+      ④<strong>算账+给选择：</strong>"人均XX元×4人=XX元/桌。每天多5桌=XX元/天。我们有三档方案。"
+    </div>
+  </div>
+</div>
+<div class="row row-3">
+  <div class="cell gyl">
+    <div class="cell-title">方案一 · 基础版 · ¥6,000/70天</div>
+    <div class="cell-body">
+      <strong>日均成本：</strong>约86元/天<br>
+      <strong>适合谁：</strong>首次尝试、预算有限<br>
+      <strong>有什么：</strong>基础曝光+附近搜展示+关键词投放<br>
+      <strong>限制：</strong>无OCPC智能出价，流量池较小<br>
+      <span style="color:#64748b;font-size:10px;">→ 先试试水，有效果再追加</span>
+    </div>
+  </div>
+  <div class="cell gl">
+    <div class="cell-title">方案二 · 进阶版⭐ · ¥10,000/92天</div>
+    <div class="cell-body">
+      <strong>日均成本：</strong>约109元/天<br>
+      <strong>适合谁：</strong>80%商户选这档<br>
+      <strong>有什么：</strong>全部 + OCPC智能出价 + 更大曝光量<br>
+      <strong>优势：</strong>同样预算多15-30%精准客流<br>
+      <span style="color:#64748b;font-size:10px;">→ 智能出价花同样的钱带更多桌</span>
+    </div>
+  </div>
+  <div class="cell pl">
+    <div class="cell-title">方案三 · 旗舰版 · ¥20,000/119天</div>
+    <div class="cell-body">
+      <strong>日均成本：</strong>约168元/天<br>
+      <strong>适合谁：</strong>高客单、大门店<br>
+      <strong>有什么：</strong>进阶全部 + 区域保护 + 1v1运营<br>
+      <strong>优势：</strong>区域建立品牌壁垒<br>
+      <span style="color:#64748b;font-size:10px;">→ 要做${city}${cat}第一选这档</span>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell yl" style="flex:1;">
+    <div class="cell-title">报价价值锚定 · 为什么6000不贵</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "很多老板第一次合作想少花点先试试，其实大可不必担心。6000块钱也就一两个月的预算，日预算100，周末流量高峰200，一周差不多1000，一个多月的时间。广告怎么花、什么时候花您说了算，为效果买单，情况不行随时喊停。<br><br>
+        给${s}算笔账——按获客成本15元/到店意向，6000元差不多带来400桌生意，平均每桌利润100元，预计利润40000，ROI约6倍。这还是保守估算。<br><br>
+        平台给到的是6000最低门槛，目前很多商户都是一万一万在充值了，所以${s}可以放心尝试。"
+      </div>
+    </div>
+  </div>
+</div>
+<div class="principle-bar"><div class="pt">推介4原则</div>①先呼应痛点再推方案 ②用同品类案例+具体数字背书 ③帮老板算账建立价值认知 ④三档方案引导选中档进阶</div>`;
+
+    case 'p5': return `
+<div class="hint hint-y">通用公式：①认同感受 → ②转移视角 → ③FAB拆解 → ④降低门槛/制造紧迫感<br><strong>FAB拆解：</strong><span class="tag tag-b">F特性</span>按点击扣费，花不完永远在账户 → <span class="tag tag-g">A优势</span>日均不到90元带来5-7桌 → <span class="tag tag-y">B利益</span>获客成本15-30元/桌，远低于传单</div>
+<div class="row row-2">
+  <div class="cell rl">
+    <div class="cell-title">异议1 · 太贵了 <span class="tag tag-r">最高频</span></div>
+    <div class="cell-body">
+      ①"理解，每一分钱要花在刀刃上。"<br>
+      ②"但6000是70天花的，日均不到90元，带来5-7桌。"<br>
+      ③"按点击扣费，没点击不扣钱，花不完永远在账户。零风险。"
+    </div>
+  </div>
+  <div class="cell rl">
+    <div class="cell-title">异议2 · 没效果 <span class="tag tag-r">新人最怕</span></div>
+    <div class="cell-body">
+      ①"特别理解，踩过坑肯定不敢再试。"<br>
+      ②"但高德不一样——用户打开就是要到店的，意图明确。"<br>
+      ③"唐山小龙虾店：月订单299→1020笔(↑241%)，数据透明可查。"
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell gl">
+    <div class="cell-title">异议3 · 生意好不需要 <span class="tag tag-g">守江山</span></div>
+    <div class="cell-body">
+      ①"恭喜${s}生意好！产品确实过硬。"<br>
+      ②"但正因为生意好，更要注意——${comp}已在推广，每天截走5-8桌。"<br>
+      ③"高德10亿月活，每天新客找${cat}。不做=拱手让人。"
+    </div>
+  </div>
+  <div class="cell yl">
+    <div class="cell-title">异议4 · 考虑考虑 <span class="tag tag-y">逼单前关卡</span></div>
+    <div class="cell-body">
+      ①"没问题，考虑是应该的。"<br>
+      ②"但现在平台补贴本月只剩几个名额，错过等下季度。"<br>
+      ③"今天先锁名额？不需要付款，只是保留优惠资格。"
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell bl">
+    <div class="cell-title">异议5 · 没时间/麻烦 <span class="tag tag-b">零操作</span></div>
+    <div class="cell-body">
+      ①"完全不用担心！装修、投放、优化、复盘，全部我来做。"<br>
+      ②"您只需给我几张照片：菜单、环境照、招牌菜。"<br>
+      ③"每周数据复盘，清楚每分钱花在哪。相当于雇了线上营销专员。"
+    </div>
+  </div>
+  <div class="cell pl">
+    <div class="cell-title">异议6 · 没预算 <span class="tag tag-p">投资视角</span></div>
+    <div class="cell-body">
+      ①"理解，现金流紧张。"<br>
+      ②"但这不是消费，是投资。日均不到90元，70天新增营收大几千到上万，ROI≥2.1倍。"<br>
+      ③"越晚做竞对截越多，先占位置最划算。"
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell rl" style="flex:1;">
+    <div class="cell-title">详细话术① · 预算高了怎么回应</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "很多老板第一次合作想少花点先试试，大可不必担心。算下，距离${holiday}还有一段时间，餐饮高峰期也就这几个月。6000块钱也就一两个月的预算，日预算100，周末200，一周1000左右。广告怎么花您说了算，为效果买单，情况不行随时喊停。<br><br>
+        给${s}算笔账——获客成本15元/到店意向，6000元约400桌生意，每桌利润100，预计利润40000，ROI约6倍。平台给到的是6000最低门槛，很多商户已经一万一万在充了。"
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell bl" style="flex:1;">
+    <div class="cell-title">详细话术② · 正价客（高德用户质量说明）</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "高德用户男性比较集中，消费实力强。线上就是一个引流获客渠道，相当于前端获客环节，真正决定用户到不到店，核心还是菜品、服务、环境、价格。用户到${s}，看评价销量，商户通帮您做装修，有个承接转化。<br><br>
+        没投放的话相当于纯自然流量、等客上门。做推广是主动获客，把高德上搜${cat}的精准用户推到${s}，曝光量和排名上去了，用户点击就多了。<br><br>
+        高德和美团不一样——美团用户看评分看距离看价格综合选择，高德用户是带着明确目的的，搜${cat}就是要吃，搜到${s}距离近、评分好就直接导航过来。这种叫正价客户，到店消费概率非常高。"
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell gl" style="flex:1;">
+    <div class="cell-title">详细话术③ · 担心效果（5步法）</div>
+    <div class="cell-body">
+      <div class="script-box">
+        <strong>1、选户逻辑：</strong>今天为什么联系${s}？因为你们门店在高德高流量商圈，我们选户拨打是有逻辑的。<br><br>
+        <strong>2、服务保障：</strong>作为金牌运维小二，合作门店效果都不错。7x24小时在线，有任何问题随时找我。<br><br>
+        <strong>3、平台实力：</strong>高德的抽免单活动、红包补贴都是真金白银在补贴，远超其他平台。高德用户质量是行业公认优质群体。<br><br>
+        <strong>4、案例证明：</strong>周边案例订座量都有好几百，更好的一两千。都是近期效果展示，平台持续在补贴。<br><br>
+        <strong>5、信心传递：</strong>您能在美团/抖音做得好，在高德肯定不会差。对自己也要有信心。
+      </div>
+    </div>
+  </div>
+</div>
+<div class="principle-bar"><div class="pt">异议4原则</div>①先认同感受，不要直接反驳 ②转移视角（总价→日均成本） ③FAB结构拆解价值 ④降低门槛或制造紧迫感推动决策</div>`;
+
+    case 'p6': return `
+<div class="row">
+  <div class="cell rl" style="flex:1;"><div class="cell-title">电销铁律</div><div class="cell-body">异议处理完后<strong>必须立即逼单</strong>。不要让老板说"考虑"然后挂电话——<strong>挂完80%不会再接</strong>。</div></div>
+</div>
+<div class="hint hint-g">新人逼单有4大政策弹药可用，根据老板犹豫的点选择合适的政策推。</div>
+<div class="row row-2">
+  <div class="cell yl">
+    <div class="cell-title">政策1 · 优惠折扣申请</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "这个折扣是我特别申请到的，之前都是百家连锁门店才能享有。现在${s}单店就可以享有，非常划算。需要财务审批才能申请到，您没问题的话，先把门店资料发我，帮您建店走申请。"
+      </div>
+    </div>
+  </div>
+  <div class="cell bl">
+    <div class="cell-title">政策2 · 高德甄选标签</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "目前平台做活动补贴，有专门会场广告位，流量是往常3-5倍。${city}${cat}可以申请【高德甄选】标签，名额有限，咱们区域只有2个名额了。有标签会有额外排名和流量加权。我先帮${s}建店，抢占名额。"
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell rl">
+    <div class="cell-title">政策3 · 红包资源逼单</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "目前平台百亿红包补贴活动，广告在投期间，180-18、350-35这些都是平台全额补贴，真金白银。${city}名额快结束了，您把资料发我帮${s}先做建店审核。"
+      </div>
+    </div>
+  </div>
+  <div class="cell gl">
+    <div class="cell-title">政策4 · OCPC效果保障⭐</div>
+    <div class="cell-body">
+      <div class="script-box">
+        "${s}选上了明星商圈，可以申请OCPC投放模式。以门店核销收入作为考核目标，一周没达到预期核销目标，享有超出成本的赔付。赔付广告现金红包，可直接用于投放。相当于零风险尝试。"
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell yl"><div class="cell-title">策略1 · 限时补贴</div><div class="cell-body"><span class="tag tag-y">紧迫感</span><br>"平台补贴本月只剩几个名额，下个月恢复原价。今天定我立马帮${s}申请保留。"</div></div>
+  <div class="cell rl"><div class="cell-title">策略2 · 竞品截流</div><div class="cell-body"><span class="tag tag-r">威胁感</span><br>"${comp}已投广告，每天多5-8桌。${s}不做=拱手让人。越晚追赶成本越高。今天定，先把排名做起来。"</div></div>
+</div>
+<div class="row row-2">
+  <div class="cell gl"><div class="cell-title">策略3 · 零风险</div><div class="cell-body"><span class="tag tag-g">降门槛</span><br>"推广通是预存款，花不完永远在账户。按点击扣费，没点击不扣钱。效果不好随时暂停。${s}没有任何损失。先试第二档？"</div></div>
+  <div class="cell pl"><div class="cell-title">策略4 · 当通成交⭐</div><div class="cell-body"><span class="tag tag-p">最强</span><br>"聊了这么多，方案确实能帮${s}解决问题。${policy}，您现在确认，我立马帮店铺上线，明天接客流。剩下全交给我。您看行吗？"<br><span style="color:#64748b;font-size:10px;">→ 停顿3秒，等回答</span></div></div>
+</div>
+<div class="row row-2">
+  <div class="cell bl"><div class="cell-title">策略5 · 二选一</div><div class="cell-body"><span class="tag tag-b">心理学</span><br><strong>"${s}是选进阶10000先试试，还是先拿基础6000占个位置？"</strong><br><span style="color:#64748b;font-size:10px;">不问"做不做"，问"选A还是选B"</span></div></div>
+  <div class="cell gyl"><div class="cell-title">策略6 · 假设成交</div><div class="cell-body"><span class="tag tag-gy">顺水推舟</span><br><strong>"那咱们就定第二档了。营业执照和法人身份证发我，今天提交审核，明天上线。"</strong><br><span style="color:#64748b;font-size:10px;">用"那咱们就定了"代替"您定了吗"</span></div></div>
+</div>
+<div class="principle-bar"><div class="pt">逼单4原则</div>①制造紧迫感：限时/名额/竞品截流 ②降低门槛：先锁名额/零风险 ③当通成交：异议处理后立即逼 ④不给"考虑"空间：给明确行动指令</div>`;
+
+    case 'p7': return `
+<div class="row row-2">
+  <div class="cell gl"><div class="cell-title">电话里关单</div><div class="cell-body">"太好了老板，感谢信任！我加您微信发合同和付款链接，3个工作日内上线，全程盯着。上线第一周每天给您看数据，任何问题24小时内回复。"</div></div>
+  <div class="cell bl"><div class="cell-title">加微信后第一条消息</div><div class="cell-body"><strong>5分钟内发送：</strong><br>"X老板您好，我是刚才跟您通话的高德客户经理XXX。感谢信任！后续${s}上线、复盘、任何问题都找我。先发您合同和付款链接，方便时看一下。"</div></div>
+</div>
+<div class="row row-2">
+  <div class="cell yl">
+    <div class="cell-title">未成交跟进节奏</div>
+    <div class="cell-body">
+      <table class="mini-table">
+        <tr><td><strong>挂断后5分</strong></td><td>加微+发${s}数据资料</td></tr>
+        <tr><td><strong>第2天</strong></td><td>微信跟进名额</td></tr>
+        <tr><td><strong>第3天</strong></td><td>电话回访</td></tr>
+        <tr><td><strong>第7天</strong></td><td>发同品类案例</td></tr>
+        <tr><td><strong>第14天</strong></td><td>电话：月底名额快没</td></tr>
+        <tr><td><strong>第30天</strong></td><td>通知下月新活动</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="cell pl">
+    <div class="cell-title">成交后服务SOP</div>
+    <div class="cell-body">
+      <table class="mini-table">
+        <tr><td><strong>成交当天</strong></td><td>发合同+链接+材料清单</td></tr>
+        <tr><td><strong>付款后1天</strong></td><td>确认收款+提交审核</td></tr>
+        <tr><td><strong>上线当天</strong></td><td>通知+截图${s}店铺页</td></tr>
+        <tr><td><strong>第3天</strong></td><td>第一次数据反馈</td></tr>
+        <tr><td><strong>第7天</strong></td><td>周度复盘+调整</td></tr>
+        <tr><td><strong>第30天</strong></td><td>月度复盘+下月计划</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="principle-bar"><div class="pt">跟进4原则</div>①成交后5分钟内加微信发第一条消息 ②未成交按节奏持续跟进至少30天 ③上线后第3/7/30天做数据复盘 ④所有跟进记录写在企微备注中</div>`;
+
+    case 'p8': return `
+<div class="hint hint-b">以下内容用于合作后服务阶段或回答老板"上线后怎么运营"时使用，不是电话推销的重点。</div>
+<div class="row row-2">
+  <div class="cell bl">
+    <div class="cell-title">平台红包补贴玩法</div>
+    <div class="cell-body">
+      <strong>① 满减红包：</strong>平台出资180-18、350-35，${s}零成本获客<br>
+      <strong>② 抽免单：</strong>平台定期抽免单活动，拉动新客尝鲜<br>
+      <strong>③ 霸王餐：</strong>优质商户可申请，平台全额出资<br>
+      <strong>④ 新客补贴：</strong>新入驻商户专享补贴，降低首投成本<br>
+      <span style="color:#64748b;font-size:10px;">→ 这些补贴都是平台出钱，${s}只享受客流</span>
+    </div>
+  </div>
+  <div class="cell gl">
+    <div class="cell-title">基础运营动作</div>
+    <div class="cell-body">
+      <strong>① 信息完善：</strong>${s}营业时间、电话、地址、菜品标签补全<br>
+      <strong>② 店铺装修：</strong>门头图、环境照、招牌菜、菜单上传<br>
+      <strong>③ 团购配置：</strong>设置2-3个引流套餐（1-2人餐、3-4人餐）<br>
+      <strong>④ 评价维护：</strong>差评24小时内回复，好评定期致谢<br>
+      <span style="color:#64748b;font-size:10px;">→ 全程代运营，老板只需提供照片</span>
+    </div>
+  </div>
+</div>
+<div class="row row-2">
+  <div class="cell yl">
+    <div class="cell-title">流量运营策略</div>
+    <div class="cell-body">
+      <strong>① 推广通投放：</strong>按点击扣费，每日预算灵活调整<br>
+      <strong>② 关键词优化：</strong>覆盖${cat}词+${city}地域词+场景词（"聚会""约会"）<br>
+      <strong>③ 时段出价：</strong>午晚高峰提高出价，闲时降低<br>
+      <strong>④ 地域卡位：</strong>周边1-3公里精准投放，锁定最近客流
+    </div>
+  </div>
+  <div class="cell rl">
+    <div class="cell-title">数据复盘节奏</div>
+    <div class="cell-body">
+      <strong>每日：</strong>${s}曝光量、点击量、导航量监控<br>
+      <strong>每周：</strong>ROI核算、关键词效果、出价调整<br>
+      <strong>每月：</strong>月度报告、下月预算规划、活动申报<br>
+      <strong>每季：</strong>大促活动对接（五一/端午/中秋/国庆/春节）<br>
+      <span style="color:#64748b;font-size:10px;">→ 让老板看到每一分钱花在哪、带来了多少桌</span>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="cell pl" style="flex:1;">
+    <div class="cell-title">新人提醒 · 这些话不要在推销时说</div>
+    <div class="cell-body">
+      <strong>不要承诺：</strong>"合作后一定上榜单""保证每天来10桌""一个月回本"<br>
+      <strong>不要夸大：</strong>红包补贴不是永远有，活动有期限；OCPC保障有门槛<br>
+      <strong>正确说法：</strong>"平台目前有补贴活动，我帮${s}申请""效果看产品和服务，我们负责引流"
+    </div>
+  </div>
+</div>`;
+
+    default: return '<div class="cell gyl"><div class="cell-body">暂无内容</div></div>';
+  }
+}
+
+// ==================== 速查初始化 ====================
+let _currentPhase = 'wall';
+window._refInited = false;
+
+function initRef() {
+  window._refInited = true;
+  const nav = document.getElementById('phaseNav');
+  nav.innerHTML = PHASES.map(p =>
+    `<div class="phase-pill${p.id === _currentPhase ? ' active' : ''}" data-phase="${p.id}" onclick="switchPhase('${p.id}')">${p.num} ${p.title}</div>`
+  ).join('');
+  renderCurrentPhase();
+}
+
+function switchPhase(phaseId) {
+  _currentPhase = phaseId;
+  document.querySelectorAll('.phase-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.phase === phaseId);
+  });
+  renderCurrentPhase();
+}
+
+function renderCurrentPhase() {
+  const phase = PHASES.find(p => p.id === _currentPhase);
+  if (!phase) return;
+  const d = getFormData();
+  let html = `<div class="ph-bar" style="${phase.barStyle}"><span class="ph-num">${phase.num}</span><span class="ph-title">${phase.title}</span><span class="ph-meta">${phase.meta}</span></div>`;
+  html += getPhaseContent(_currentPhase, d);
+  document.getElementById('refContent').innerHTML = html;
+}
+
+// ==================== 表单同步（防抖） ====================
+let _syncTimer = null;
+function debouncedSync() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(function() {
+    if (document.getElementById('refMode').style.display !== 'none') {
+      renderCurrentPhase();
+    }
+  }, 300);
+}
+
+// 监听关键表单字段变化
+['f_store','f_city','f_comp_name','f_policy'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('input', debouncedSync);
+});
+['f_category','f_status'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('change', debouncedSync);
+});
+
+// ==================== 速查搜索高亮 ====================
+function searchRef(keyword) {
+  // 先清除旧高亮
+  document.querySelectorAll('#refContent .ref-highlight').forEach(function(el) {
+    var parent = el.parentNode;
+    parent.replaceChild(document.createTextNode(el.textContent), el);
+    parent.normalize();
+  });
+  keyword = keyword.trim();
+  if (!keyword) return;
+
+  var container = document.getElementById('refContent');
+  var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+  var nodes = [];
+  var node;
+  while (node = walker.nextNode()) {
+    if (node.nodeValue.includes(keyword)) nodes.push(node);
+  }
+
+  nodes.forEach(function(node) {
+    var parts = node.nodeValue.split(keyword);
+    var frag = document.createDocumentFragment();
+    parts.forEach(function(part, i) {
+      frag.appendChild(document.createTextNode(part));
+      if (i < parts.length - 1) {
+        var hl = document.createElement('span');
+        hl.className = 'ref-highlight';
+        hl.textContent = keyword;
+        frag.appendChild(hl);
+      }
+    });
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+</script>
+
+<!-- 图片灯箱 -->
+<div id="imgLightbox" onclick="closeLightbox()">
+  <button class="lb-close" onclick="event.stopPropagation();closeLightbox()">&times;</button>
+  <img id="lbImg" src="" onclick="event.stopPropagation()">
+  <div class="lb-seq" id="lbSeq"></div>
+</div>
+</body>
+</html>
