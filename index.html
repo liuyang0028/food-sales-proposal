@@ -651,20 +651,19 @@ body {
         </div>
         <div class="form-group">
           <label>品类 <span class="req">*</span></label>
-          <select id="f_category">
-            <option value="">请选择</option>
-            <option value="米线">米线/粉面</option>
-            <option value="火锅">火锅</option>
-            <option value="海鲜">海鲜</option>
-            <option value="烧烤">烧烤</option>
-            <option value="日料">日料/日韩</option>
-            <option value="川菜">川菜</option>
-            <option value="云南菜">云南菜/滇菜</option>
-            <option value="西餐">西餐</option>
-            <option value="烘焙">烘焙/饮品</option>
-            <option value="美食">美食(综合)</option>
-            <option value="其他">其他</option>
-          </select>
+          <input type="text" id="f_category" list="category_list" placeholder="OCR自动识别，可手动修改">
+          <datalist id="category_list">
+            <option value="米线">
+            <option value="火锅">
+            <option value="海鲜">
+            <option value="烧烤">
+            <option value="日料">
+            <option value="川菜">
+            <option value="云南菜">
+            <option value="西餐">
+            <option value="烘焙">
+            <option value="美食">
+          </datalist>
         </div>
         <div class="form-group">
           <label>商户状态 <span class="req">*</span></label>
@@ -1905,7 +1904,7 @@ function getFormData() {
 function validate(d) {
   if (!d.store) return '请填写商户名称';
   if (!d.city) return '请填写城市';
-  if (!d.category) return '请选择品类';
+  if (!d.category) return '请填写品类';
   if (!d.status) return '请选择商户状态';
   return null;
 }
@@ -3425,7 +3424,7 @@ function debouncedSync() {
 });
 ['f_category','f_status'].forEach(function(id) {
   var el = document.getElementById(id);
-  if (el) el.addEventListener('change', debouncedSync);
+  if (el) { el.addEventListener('change', debouncedSync); el.addEventListener('input', debouncedSync); }
 });
 
 // ==================== 速查搜索高亮 ====================
