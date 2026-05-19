@@ -657,6 +657,7 @@ body {
             <option value="火锅">火锅</option>
             <option value="海鲜">海鲜</option>
             <option value="烧烤">烧烤</option>
+            <option value="日料">日料/日韩</option>
             <option value="川菜">川菜</option>
             <option value="云南菜">云南菜/滇菜</option>
             <option value="西餐">西餐</option>
@@ -1219,7 +1220,7 @@ function parseAndFill(text) {
   }
   // 策略B: 匹配餐饮店名尾缀 — 只在竞争段落之前搜索，防止抓到竞争对手名
   if (!storeName) {
-    var storeRe = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|居酒屋|蘑菇屋|烤串))/;
+    var storeRe = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋|烤串))/;
     for (let line of safeSearchLines) {
       var m = line.match(storeRe);
       if (m && m[1].length >= 4 && !isUILabel(m[1])) { storeName = m[1]; break; }
@@ -1308,7 +1309,7 @@ function parseAndFill(text) {
         // 置信度：有括号(策略A)→高(不提示)，有后缀(策略B)→中，其他→低
         if (bracketMatch) {
           hintEl.textContent = '';
-        } else if (/米线|米粉|海南粉|螺蛳粉|火锅|海鲜|烧烤|菜馆|饭店|酒楼|餐厅|面馆|串串|烤肉|烤鱼|寿司|咖啡|茶楼|奶茶|蛋糕|鱼庄|鸡排|黄焖鸡|汉堡|拉面|饺子|大排档|烧鸟|居酒屋|蘑菇屋/.test(storeName)) {
+        } else if (/米线|米粉|海南粉|螺蛳粉|火锅|海鲜|烧烤|菜馆|饭店|酒楼|餐厅|面馆|串串|烤肉|烤鱼|寿司|咖啡|茶楼|奶茶|蛋糕|鱼庄|鸡排|黄焖鸡|汉堡|拉面|饺子|大排档|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋/.test(storeName)) {
           hintEl.textContent = '（OCR识别，请核对）';
         } else {
           hintEl.textContent = '（OCR置信度低，请仔细核对）';
@@ -1335,27 +1336,47 @@ function parseAndFill(text) {
 
   // === 4. 自动推断品类 ===
   if (!document.getElementById('f_category').value) {
-    // 优先用店名推断品类
-    var nameAndText = (storeName || '') + ' ' + fullText;
+    // 优先仅用店名推断品类（避免全文中竞争对手名如"海鲜大排档"干扰）
+    var nameOnly = storeName || '';
     var catMap = [
       [/过桥|米线|米粉/, '米线'],
       [/火锅|串串|涮/, '火锅'],
-      [/海鲜|鱼|虾|蟹|龙虾/, '海鲜'],
       [/烧烤|烤肉|烤串|撸串/, '烧烤'],
+      [/烧鸟|居酒屋|寿司|日料|日式|刺身|烯乌|烧乌/, '日料'],
+      [/海鲜|鱼庄|虾馆|蟹|龙虾/, '海鲜'],
       [/川菜|麻辣/, '川菜'],
       [/云南菜|滇菜|傣味/, '云南菜'],
       [/西餐|牛排|意面|汉堡|披萨/, '西餐'],
       [/咖啡|奶茶|蛋糕|甜品|面包|烘焙|茶饮/, '烘焙'],
       [/小吃|面馆|粉店|拉面|牛肉面|饺子|包子|馄饨/, '米线'],
     ];
+    var catFound = false;
+    // 第一轮：只用店名
     for (var ci = 0; ci < catMap.length; ci++) {
-      if (catMap[ci][0].test(nameAndText)) {
+      if (catMap[ci][0].test(nameOnly)) {
         var catEl = document.getElementById('f_category');
         catEl.value = catMap[ci][1];
         catEl.dataset.ocrFilled = '1';
         markFilled('f_category');
         filled++;
+        catFound = true;
         break;
+      }
+    }
+    // 第二轮：店名没匹配到，用竞争段落之前的全文补充
+    if (!catFound) {
+      var safeText = fullText;
+      var compIdx = fullText.search(/竞争|切口话术|主要竞争|周边竞品/);
+      if (compIdx > 0) safeText = fullText.substring(0, compIdx);
+      for (var ci = 0; ci < catMap.length; ci++) {
+        if (catMap[ci][0].test(safeText)) {
+          var catEl2 = document.getElementById('f_category');
+          catEl2.value = catMap[ci][1];
+          catEl2.dataset.ocrFilled = '1';
+          markFilled('f_category');
+          filled++;
+          break;
+        }
       }
     }
   }
@@ -1573,6 +1594,7 @@ function parseStoreInfo(text) {
       var lastPart = parts[parts.length - 1];
       var catMap = {'海南菜':'美食','中餐':'美食','火锅':'火锅','烧烤':'烧烤',
         '川菜':'川菜','云南菜':'云南菜','滇菜':'云南菜','西餐':'西餐',
+        '日料':'日料','日韩':'日料','日式':'日料','日本料理':'日料',
         '咖啡':'烘焙','奶茶':'烘焙','面食':'米线','粉面':'米线','海鲜':'海鲜'};
       var catVal = catMap[lastPart] || '美食';
       var catEl = document.getElementById('f_category');
