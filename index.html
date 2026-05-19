@@ -449,7 +449,8 @@ body {
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.ocr-filled { border-color: #10b981 !important; background: #f0fdf4 !important; }
+.ocr-filled { border-color: #f59e0b !important; background: #fffbeb !important; }
+.ocr-filled-persistent { border-color: #f59e0b !important; border-width: 2px !important; background: #fffbeb !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2'%3E%3Cpath d='M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; padding-right: 28px !important; }
 
 /* Modal */
 .modal-overlay {
@@ -648,6 +649,18 @@ body {
     </div>
 
     <!-- Quick Info -->
+    <!-- OCR校验提示横幅 -->
+    <div id="ocrCheckBanner" style="display:none;margin-bottom:12px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px solid #f59e0b;border-radius:10px;padding:12px 16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">⚠️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#92400e;">OCR自动识别完成，请逐项核对并校正</div>
+          <div style="font-size:11px;color:#a16207;margin-top:2px;">高亮字段为自动填充，可能有误 — 点击字段直接修改，品类/城市/名称务必确认</div>
+        </div>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;padding:4px;">✕</button>
+      </div>
+    </div>
+
     <div class="form-section">
       <div class="form-section-title"><span style="font-size:14px;">📋</span> 商户信息（对照截图填写）</div>
       <div class="form-grid">
@@ -1158,12 +1171,17 @@ function clearOcrFields() {
     if (el && el.dataset.ocrFilled) {
       el.value = '';
       delete el.dataset.ocrFilled;
+      el.classList.remove('ocr-filled-persistent');
     }
   });
   var catEl = document.getElementById('f_category');
-  if (catEl && catEl.dataset.ocrFilled) { catEl.value = ''; delete catEl.dataset.ocrFilled; }
+  if (catEl && catEl.dataset.ocrFilled) { catEl.value = ''; delete catEl.dataset.ocrFilled; catEl.classList.remove('ocr-filled-persistent'); }
   var statusEl = document.getElementById('f_status');
-  if (statusEl && statusEl.dataset.ocrFilled) { statusEl.value = ''; delete statusEl.dataset.ocrFilled; }
+  if (statusEl && statusEl.dataset.ocrFilled) { statusEl.value = ''; delete statusEl.dataset.ocrFilled; statusEl.classList.remove('ocr-filled-persistent'); }
+  var banner = document.getElementById('ocrCheckBanner');
+  if (banner) banner.style.display = 'none';
+  var hintEl = document.getElementById('f_store_hint');
+  if (hintEl) hintEl.innerHTML = '';
 }
 
 // ==================== OCR 文本解析 ====================
@@ -1312,16 +1330,15 @@ function parseAndFill(text) {
         if (!hintEl) {
           hintEl = document.createElement('span');
           hintEl.id = 'f_store_hint';
-          hintEl.style.cssText = 'font-size:11px;color:#e67e22;margin-left:4px;';
           storeInput.parentNode.insertBefore(hintEl, storeInput.nextSibling);
         }
-        // 置信度：有括号(策略A)→高(不提示)，有后缀(策略B)→中，其他→低
+        // 置信度：有括号(策略A)→高，有后缀(策略B)→中，其他→低
         if (bracketMatch) {
-          hintEl.textContent = '';
+          hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;padding:1px 6px;border-radius:4px;margin-left:4px;">OCR识别 ✓</span>';
         } else if (/米线|米粉|海南粉|螺蛳粉|火锅|海鲜|烧烤|菜馆|饭店|酒楼|餐厅|面馆|串串|烤肉|烤鱼|寿司|咖啡|茶楼|奶茶|蛋糕|鱼庄|鸡排|黄焖鸡|汉堡|拉面|饺子|大排档|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋/.test(storeName)) {
-          hintEl.textContent = '（OCR识别，请核对）';
+          hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#d97706;background:#fffbeb;border:1px solid #fde68a;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ OCR识别，请核对</span>';
         } else {
-          hintEl.textContent = '（OCR置信度低，请仔细核对）';
+          hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ 置信度低，务必核对</span>';
         }
       }
     }
@@ -1458,8 +1475,14 @@ function recommendTargets() {
 function markFilled(fieldId) {
   const el = document.getElementById(fieldId);
   if (el) {
+    // 短暂绿色闪烁
     el.classList.add('ocr-filled');
     setTimeout(function() { el.classList.remove('ocr-filled'); }, 5000);
+    // 持久的橙色校验标识
+    el.classList.add('ocr-filled-persistent');
+    // 显示顶部校验横幅
+    var banner = document.getElementById('ocrCheckBanner');
+    if (banner) banner.style.display = 'block';
   }
 }
 
