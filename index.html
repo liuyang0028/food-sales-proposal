@@ -1986,6 +1986,40 @@ function matchScenario(d) {
 // ==================== 模板填充 ====================
 function T(tpl, d) {
   if (!tpl) return '';
+  // 流量数据提取
+  var trafficData = window._trafficData || [];
+  var getMetricVal = function(label, col) {
+    var row = trafficData.find(function(r) { return r.label === label; });
+    if (!row) return '';
+    var val = col === 'mine' ? row.mine : (col === 'nearby' ? row.nearby : row.city);
+    if (!val || val === '-' || val === '--') return '';
+    return String(val);
+  };
+  // 智能计算
+  var priceSelf = d.price_self ? parseFloat(d.price_self) : 80;
+  var priceCity = d.price_city ? parseFloat(d.price_city) : 0;
+  var priceDiff = priceCity > 0 ? Math.round((priceSelf - priceCity) / priceCity * 100) : 0;
+  var priceAdvantage = priceDiff < 0 ? '比同城均价低' + Math.abs(priceDiff) + '%，性价比优势大' : (priceDiff > 20 ? '高于同城均价，客单价高推广后单客收益更大' : '与同城均价接近');
+  var monthlyAddRevenue = Math.round(priceSelf * 10 * 4); // 每周多10桌×4周×人均
+  var dailyNewTables = priceSelf > 0 ? Math.ceil(10000 / 90 / priceSelf) : 0; // 1万档每天回本桌数
+
+  // 曝光量智能描述
+  var exposureMine = getMetricVal('曝光量', 'mine');
+  var exposureNearby = getMetricVal('曝光量', 'nearby');
+  var exposureDesc = '';
+  if (exposureMine && exposureNearby) {
+    exposureDesc = '本店月曝光' + exposureMine + '，而周边商户' + exposureNearby;
+  } else if (exposureMine) {
+    exposureDesc = '本店月曝光' + exposureMine;
+  }
+
+  // 搜索量智能描述
+  var searchMine = getMetricVal('搜索量', 'mine');
+  var searchDesc = '';
+  if (searchMine) {
+    searchDesc = '每月有' + searchMine + '次搜索指向您的店';
+  }
+
   return tpl
     .replace(/\{store\}/g, d.store || '')
     .replace(/\{city\}/g, d.city || '')
@@ -1996,8 +2030,17 @@ function T(tpl, d) {
     .replace(/\{comp_status\}/g, d.comp_status || '已合作')
     .replace(/\{customer_note\}/g, d.customer_note || '')
     .replace(/\{district\}/g, d.district || '')
-    .replace(/\{price_self\}/g, d.price_self || '')
+    .replace(/\{price_self\}/g, d.price_self || '80')
     .replace(/\{price_city\}/g, d.price_city || '')
+    .replace(/\{price_advantage\}/g, priceAdvantage)
+    .replace(/\{monthly_add\}/g, String(monthlyAddRevenue))
+    .replace(/\{daily_tables\}/g, String(dailyNewTables))
+    .replace(/\{exposure_desc\}/g, exposureDesc)
+    .replace(/\{search_desc\}/g, searchDesc)
+    .replace(/\{exposure_mine\}/g, exposureMine)
+    .replace(/\{exposure_nearby\}/g, exposureNearby)
+    .replace(/\{search_mine\}/g, searchMine)
+    .replace(/\{calc\}/g, String(monthlyAddRevenue))
     .replace(/\{case_store\}/g, (d.caseData && d.caseData.storeName) || '附近商户')
     .replace(/\{case_orders\}/g, (d.caseData && d.caseData.monthlyOrders) || '');
 }
@@ -2315,36 +2358,36 @@ const OBJECTION_DB = {
 
 const SCRIPT_TPL = {
   cold_start: {
-    // ① 开场：前30秒绝不提付费，用高德数据开场，加微信讲好处
-    opener: '老板您好，我是高德地图{city}这边负责{category}商户的运营顾问，请问是{store}的老板吗？\n\n我刚在我们后台看了一下{store}的数据，发现一个情况想第一时间告诉您——咱们门店每天有不少顾客在高德搜{category}的时候看到了{store}，有点击、有浏览，基础流量其实还不错。\n\n您有没有注意到最近来的顾客，有多少是通过高德地图找过来的？',
-    // ② 经营诊断+挖需同步进行（封闭式问题，二选一）
-    hook: '（听老板回答后）嗯，这个很正常。我帮您对比了一下数据，{store}的曝光量在这个区域里算中等水平，但有一个问题——搜{category}关键词时，排在前面的几家店基本都是在咱们平台做了推广的商户，您的店会被挤到后面。\n\n我问您一个问题——您觉得目前{store}获客，主要靠的是老客户复购，还是新客户进店？（等老板回答）\n\n那每周大概有多少桌是新面孔、第一次来的？（等老板估个数字）\n\n如果每周再多来10桌新客，一桌人均{price_self}元，一个月下来大概能多{calc}块钱营业额，您觉得这个目标值得争取吗？',
-    // ③ 报方案：先呼应痛点 → 案例+数字背书 → 帮算账
-    benefit: '老板，根据您刚才说的情况，新客户获取是您现在最大的增长点。\n\n咱们有个案例，{city}附近一家做{category}的商户，之前情况跟{store}差不多，做了推广后头一个月搜索曝光提升了3倍多，来了好几十桌新客，广告费花了不到4000块，净赚了15000多。\n\n高德推广通的逻辑是这样的：顾客在{city}搜"{category}"，您的店就出现在他眼前，搜完直接导航到店，不像刷短视频那种随机流量，是主动找的精准客户。\n\n还有一个好消息——商户通现在高德完全免费开通，在美团是要收2000-4000元一年的，这个名额我先给您申请好。',
-    // ④ 逼单：三档引导选中档，制造紧迫感，不给"考虑"空间
-    close: '方案我根据{store}情况给您准备了三个档：\n• 试水档6000元：广告金全额到账，再送600元，膨胀券/广告券，先测试效果，随时可以看数据；\n• 主流档10000元（大多数老板选这个）：多送1000元广告金，配OCPC智能出价，系统自动帮您找精准客户，膨胀券/广告券，三个月够用；\n• 头部档20000元：额外再送2000元红包，膨胀券/广告券，做{city}{category}头部位置的首选。\n\n大部分老板都从主流档开始，3个月跑完数据再看要不要加码。今天确认的话，明天就能给您把推流计划做好、开始跑量。您看是选试水档先感受一下，还是直接上主流档？',
-    retreat: '好的，那我先帮您把门店信息免费优化一下——图片、标签、差评申诉，这些都不花钱，做完排名会提升一点。我加您微信，把优化报告发给您，过两天看完报告您再决定，怎么样？'
+    // ① 开场：前30秒不提付费，用真实数据开场
+    opener: '老板您好，我是高德地图{city}这边负责{category}商户的运营顾问，请问是{store}的老板吗？\n\n我刚在后台看了一下{store}的数据，{exposure_desc ? "发现一个情况——" + exposure_desc + "，有点击有浏览，基础流量其实不错。" : "有顾客在高德搜{category}的时候看到了{store}，有点击、有浏览，基础流量还不错。"}\n\n您有没有注意到最近来的顾客，有多少是通过高德地图找过来的？',
+    // ② 诊断：封闭式挖需，代入真实数字
+    hook: '（听老板回答后）嗯，这个很正常。我帮您对比了一下数据——{search_mine ? "{store}每个月搜索进来的顾客有{search_mine}次，" : ""}{exposure_nearby ? "但周边做了推广的{category}商户曝光量能到{exposure_nearby}，是您的好几倍，" : ""}搜{category}排在前面的几家店基本都在做推广，您的店会被挤到后面。\n\n我问您一个问题——您目前{store}获客，主要靠的是老客户复购，还是新客进店？（等老板回答）\n\n那每周大概有多少桌是第一次来的新面孔？（等老板估个数字）\n\n您现在人均{price_self}元，如果每周再多来10桌新客，一个月就能多收{monthly_add}块钱，您觉得这个目标值得争取吗？',
+    // ③ 方案：先呼应痛点 → 案例数字 → 算账
+    benefit: '老板，根据您刚才说的，{customer_note ? customer_note + "，" : ""}新客获取是您现在最大的增长点。\n\n咱们有个{city}真实案例，{category}商户，跟{store}情况差不多，投了10000元推广，3个月搜索曝光提升3倍以上，带来新客160桌，广告费不到4000就回本了，净赚15000多。\n\n{price_advantage}\n\n还有一个好消息——商户通现在高德完全免费开通，美团收2000-4000一年，我先给您申请好。',
+    // ④ 逼单：三档引导，代入城市+品类强化归属感
+    close: '根据{store}的情况，我准备了三个档：\n• 试水档6000元：送600广告金+膨胀券，先感受效果，随时查数据；\n• 主流档10000元（{city}大多数{category}商户选这个）：多送1000广告金+OCPC智能出价，{daily_tables ? "每天来" + daily_tables + "桌就回本，" : ""}三个月跑出效果；\n• 头部档20000元：额外送2000红包+膨胀券，做{city}{category}搜索第一的选这个。\n\n您是先从试水档感受一下，还是直接上主流档锁住位置？',
+    retreat: '好的，那我先帮您把{store}的门店信息免费优化——图片、标签、差评申诉。我加您微信把优化报告发给您，过两天看完再说，怎么样？'
   },
   renewal: {
-    opener: '老板您好，我是高德这边负责{store}的运营顾问，系统显示咱们之前有合作记录，我来跟进一下。\n\n最近门店生意怎么样？周末客流量有没有变化？（等老板回答，不要自己先说生意好不好）',
-    hook: '（听老板回答后）我帮您调了一下后台数据，合作期间{store}的搜索曝光和导航到店数都有明显增长，但是停掉之后这部分流量就开始往竞对那边走了。\n\n我看了一下您附近的竞争，目前您周边有几家同品类的店在持续投放，他们的排名稳定排在前三位。老板，您知道吗？顾客在高德搜{category}，一般看到前3家就决定去哪了，超过第3个位置，被点进来的概率就低很多。\n\n您觉得{store}现在的排名在周边算什么水平——靠前、中间、还是偏后？',
-    benefit: '（确认排名后）对，这个位置就是问题所在。之前合作期间这个排名是靠前的，现在停了就下来了。\n\n好消息是现在续签有专项政策：{policy}。另外我们升级了OCPC智能出价，系统自动帮您找最有可能进店的顾客，比之前版本省钱30%左右。\n\n我帮您算一下——假设每天多来5桌，一桌人均{price_self}元，一个月就是{calc}块，三个月回报远超投入。',
-    close: '老板，续签比新户还有额外的老客政策。今天确认的话我今晚就把推流计划做好，明天恢复跑量，周末就能看到效果。\n\n您是直接续主流档10000元，还是往上升一级先锁住位置？（给二选一，不给"考虑"选项）',
-    retreat: '没关系，我先帮您把门店信息更新一下。对了，加我微信的话，后续有专项政策我第一时间通知您，这个有期限的，过了就没了。'
+    opener: '老板您好，我是高德这边负责{store}的运营顾问，系统显示咱们之前有合作，我来跟进一下。\n\n最近{store}生意怎么样？{district ? district + "这边" : ""}客流量有没有变化？',
+    hook: '（听老板回答后）我帮您看了一下数据，合作期间{store}的{exposure_desc ? exposure_desc + "，" : "搜索曝光和导航到店都有明显增长，"}但停掉之后这部分流量就开始往竞对那边走了。\n\n您周边现在有几家同品类的店在持续投放，排名稳定在前三。老板您知道吗——顾客在高德搜{category}，一般看到前3家就决定去哪了。{search_mine ? "您现在每月{search_mine}次搜索流量，" : ""}超过第3个位置被点进来的概率就低很多。\n\n您觉得{store}现在排名在{district ? district : city}这边算什么水平——靠前、中间、还是偏后？',
+    benefit: '（确认排名后）对，这就是问题所在。之前合作期间排名靠前，停了就掉下来了。\n\n现在续签有专项政策：{policy}。另外升级了OCPC智能出价，系统自动找最有可能进店的顾客，比之前版本省30%左右。\n\n{price_self ? "您人均{price_self}元，每天多来{daily_tables}桌就能把广告费赚回来，" : ""}三个月的回报远超投入。{price_advantage}',
+    close: '老板，续签比新户还有额外老客政策。今天确认的话今晚就把推流计划做好，明天恢复跑量，周末就能看到效果。\n\n您是直接续主流档10000元，还是往上升一级锁住{category}头部位置？',
+    retreat: '没关系，我先帮您把{store}的门店信息更新一下。加我微信，有专项续签政策第一时间通知您，这个有期限。'
   },
   peak_season: {
-    opener: '老板您好，我是高德{city}{category}板块的运营顾问。\n\n马上{holiday}了，{city}这几天节假日搜{category}的量比平时高30-50%，我在后台看了{store}的数据，想告诉您一个情况——您有没有注意到节假日期间来的顾客，跟平时有什么不同？',
-    hook: '（听老板回答后）对，节点流量大，但有一个规律——节假日前3天，顾客就开始在高德搜附近{category}，提前规划了。现在问题是，搜{category}排在前面的几家店都在投放，{store}如果不在前面，这波流量就全被截走了。\n\n您知道吗，{holiday}期间，{city}区域内做了推广的{category}商户平均每天能多来多少桌？（稍作停顿）——数据显示大概多15-40桌，具体看区域竞争。',
-    benefit: '高德出行节针对{city}优质{category}商家有专项流量扶持，{policy}。一个城市同一类目名额有限，先确认的锁先上。\n\n节前3天确认，我今天就把推流计划做好，明天就能开始跑量，正好赶上节假日流量高峰。错过这个节点，下一次这么大的流量窗口要等到下一个节假日了。',
-    close: '我给您对比了两个选择：\n• 不投放：排名维持现状，节假日大流量被前3名的店瓜分，跟平时差不多；\n• 做推广：排名提前，搜{category}的顾客优先看到{store}，节假日多来20-40桌，广告费几天就回来了。\n\n{holiday}前确认，我今天帮您把方案做好，您看先从哪个档位开始——试水档6000还是主流档10000？',
-    retreat: '好的，那我先帮您把节假日门店展示优化一下，图片、简介、特色标签。加我微信，节前有资源位开放第一时间告诉您。'
+    opener: '老板您好，我是高德{city}{category}板块的运营顾问。\n\n马上{holiday}了，{city}搜{category}的量比平时高30-50%，我看了{store}的数据——{exposure_desc ? exposure_desc : "您有基础流量在跑"}，您有没有注意到节假日来的顾客跟平时有什么不同？',
+    hook: '（听老板回答后）对，节假日流量大，但有个规律——节假日前3天顾客就开始在高德搜附近{category}提前规划了。现在搜{category}排在前面的几家都在投放，{store}如果不在前面，这波流量就全被截走了。\n\n{holiday}期间，{city}做了推广的{category}商户平均每天能多来15-40桌。{search_mine ? "您现在每月搜索量{search_mine}，平时都这样，节假日还要翻倍，" : ""}不做推广的话这些流量都给竞对了。',
+    benefit: '高德出行节针对{city}优质{category}商家有专项流量扶持，{policy}。同一城市同一类目名额有限，先确认的先锁。\n\n节前3天确认，今天把推流计划做好，明天开始跑量，正好赶上{holiday}流量高峰。{price_advantage}',
+    close: '就两个选择：\n• 不投：排名现状，{holiday}大流量被前3名瓜分，跟平时差不多；\n• 做推广：排名提前，搜{category}的顾客优先看到{store}，多来20-40桌，{price_self ? "按您人均{price_self}元，一个{holiday}额外收入能有" + monthly_add + "以上，" : ""}广告费几天就回来了。\n\n{holiday}前确认，您先从试水档6000感受，还是直接主流档10000？',
+    retreat: '好的，先帮您优化{holiday}期间的门店展示——图片、简介、特色标签。加我微信，节前有资源位开放第一时间告诉您。'
   },
   objection_handle: {
-    opener: '老板您好，我是高德{city}这边的运营顾问，上次跟您联系过。\n\n我回去之后帮您认真研究了一下{store}的情况，有个发现想告诉您，您方便听我说一下吗？',
-    hook: '我做了个对比——{city}{category}在高德上，投放商户和没投放商户的数据差异挺明显的：搜索曝光差了大概3-5倍，导航到店量差了2-4倍。{store}目前的基础流量其实不错，说明平台上真的有顾客在找您，但这部分人最后去了哪里？去了排在前面的那几家做了推广的店。\n\n老板，我想问您一个问题：如果每周能稳定多来10桌新客，您觉得这件事值不值得投入？（封闭式，等回答）',
-    benefit: '（老板认可后）根据{store}的实际情况，上次您的顾虑我都考虑到了。\n\n{policy}，广告金用多少扣多少，花不完留在账户不过期，没有风险。另外有案例——{city}附近做{category}的商户，投了10000元，3个月带来新客160桌以上，算下来每桌获客成本不到62元，比美团还低。\n\n现在还有一个政策：前两周如果效果没达到预期，我给您做免费的关键词优化和详情页调整，确保跑量。',
-    close: '老板，我知道您在考虑，但我跟您说实话——您挂了电话后，周边做了推广的竞对今天又在获客，每多等一天就是让他们多拿一天的流量。\n\n今天确认，我今晚就把方案做好，明天开始跑量。您是先从6000试水感受一下，还是直接10000主流档？选哪个我都支持，但今天要定，这个政策有时效。',
-    retreat: '好的，我先帮您把门店基础优化做好，这个不花钱。我把优化报告发您微信，您看完再说。加一下？后续有好政策我第一时间找您。'
+    opener: '老板您好，我是高德{city}这边的运营顾问，上次跟您联系过。\n\n我回去认真研究了{store}的情况，{exposure_desc ? "看了一下数据：" + exposure_desc + "，" : ""}有个发现想告诉您，您方便听我说一下吗？',
+    hook: '我做了个对比——{city}{category}在高德上，投放商户和没投放的数据差异很明显：搜索曝光差3-5倍，导航到店差2-4倍。{exposure_mine ? "{store}月曝光{exposure_mine}，而周边做了推广的商户能到{exposure_nearby ? exposure_nearby : "几倍以上"}，" : ""}{search_desc ? search_desc + "，" : ""}这部分流量最后都去了排在前面的那几家做了推广的店。\n\n老板，如果每周能稳定多来10桌新客，{price_self ? "一个月多{monthly_add}块，" : ""}您觉得这件事值不值得投入？',
+    benefit: '（老板认可后）根据{store}的实际情况，{policy}，广告金用多少扣多少，花不完留在账户不过期，没有风险。\n\n{city}附近{category}商户，投10000元，3个月带来新客160桌以上，每桌获客成本不到62元，比美团还低。{price_advantage}\n\n前两周如果效果没达预期，我帮您做免费的关键词优化和详情页调整。',
+    close: '老板，挂了电话后，周边做了推广的竞对今天还在获客，每多等一天就让他们多拿一天流量。\n\n今天确认，今晚把方案做好，明天开始跑量。{price_self ? "您人均{price_self}元，{daily_tables}桌就能回本。" : ""}是先从6000试水，还是直接10000主流档？今天要定，这个政策有时效。',
+    retreat: '好的，先帮您把门店基础优化做好，不花钱。把优化报告发您微信，您看完再说。加一下？后续有好政策第一时间找您。'
   }
 };
 
