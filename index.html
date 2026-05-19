@@ -870,6 +870,42 @@ function showTrafficTable(data) {
   var table = document.getElementById('traffic_table');
   var ph = document.getElementById('traffic_placeholder');
   var tbody = document.getElementById('traffic_tbody');
+
+  // === 跨字段校验：检测明显不合理的数据 ===
+  var warnings = [];
+  var getNumVal = function(v) {
+    if (!v || v === '-' || v === '--') return null;
+    var s = String(v).replace(/[万千百]/g, '');
+    var n = parseFloat(s);
+    if (/万/.test(String(v))) n *= 10000;
+    if (/亿/.test(String(v))) n *= 100000000;
+    return isNaN(n) ? null : n;
+  };
+
+  // 校验1: 搜索量应该约等于泛搜量+精搜量（允许±30%误差，因为OCR可能丢数据）
+  var searchVal = getNumVal(data[1].mine); // 搜索量
+  var broadVal = getNumVal(data[2].mine);   // 泛搜量
+  var exactVal = getNumVal(data[3].mine);   // 精搜量
+  if (searchVal && broadVal && exactVal && searchVal > 0) {
+    var sumBE = broadVal + exactVal;
+    if (sumBE > 0 && Math.abs(searchVal - sumBE) / sumBE > 0.35) {
+      warnings.push('搜索量(' + data[1].mine + ')与泛搜+精搜(' + data[2].mine + '+' + data[3].mine + ')差异较大，可能识别有误');
+    }
+  }
+
+  // 校验2: 本店值一般应≤周边值≤同城值（流量指标）
+  var volumeLabels = [0, 1, 2, 3, 4, 6, 8]; // 曝光/搜索/泛搜/精搜/点击/导航/来电 的索引
+  for (var vi = 0; vi < volumeLabels.length; vi++) {
+    var row = data[volumeLabels[vi]];
+    var m = getNumVal(row.mine);
+    var n = getNumVal(row.nearby);
+    var c = getNumVal(row.city);
+    if (m && n && m > n * 3) {
+      warnings.push(row.label + '：本店(' + row.mine + ')远大于周边(' + row.nearby + ')，可能识别有误');
+      break; // 只提示第一个异常
+    }
+  }
+
   var rows = data.map(function(row) {
     return '<tr><td>' + row.label + '</td><td>' + row.mine + '</td><td>' + row.nearby + '</td><td>' + row.city + '</td></tr>';
   }).join('');
@@ -877,6 +913,21 @@ function showTrafficTable(data) {
   table.style.display = 'table';
   ph.style.display = 'none';
   window._trafficData = data;
+
+  // 显示校验警告
+  var warnEl = document.getElementById('traffic_warnings');
+  if (!warnEl) {
+    warnEl = document.createElement('div');
+    warnEl.id = 'traffic_warnings';
+    warnEl.style.cssText = 'margin-top:6px;padding:6px 10px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px;font-size:12px;color:#856404;display:none;';
+    table.parentNode.insertBefore(warnEl, table.nextSibling);
+  }
+  if (warnings.length > 0) {
+    warnEl.innerHTML = '⚠️ 数据校验异常：<br>' + warnings.map(function(w) { return '· ' + w; }).join('<br>');
+    warnEl.style.display = 'block';
+  } else {
+    warnEl.style.display = 'none';
+  }
 }
 
 function clearTrafficTable() {
@@ -1244,6 +1295,25 @@ function parseAndFill(text) {
     storeName = storeName.replace(/\s+/g, '');
     if (storeName.length >= 2 && !isUILabel(storeName)) {
       setField('f_store', storeName);
+      // 置信度标记：提示用户核对OCR识别结果
+      var storeInput = document.getElementById('f_store');
+      if (storeInput) {
+        var hintEl = document.getElementById('f_store_hint');
+        if (!hintEl) {
+          hintEl = document.createElement('span');
+          hintEl.id = 'f_store_hint';
+          hintEl.style.cssText = 'font-size:11px;color:#e67e22;margin-left:4px;';
+          storeInput.parentNode.insertBefore(hintEl, storeInput.nextSibling);
+        }
+        // 置信度：有括号(策略A)→高(不提示)，有后缀(策略B)→中，其他→低
+        if (bracketMatch) {
+          hintEl.textContent = '';
+        } else if (/米线|米粉|海南粉|螺蛳粉|火锅|海鲜|烧烤|菜馆|饭店|酒楼|餐厅|面馆|串串|烤肉|烤鱼|寿司|咖啡|茶楼|奶茶|蛋糕|鱼庄|鸡排|黄焖鸡|汉堡|拉面|饺子|大排档|烧鸟|居酒屋|蘑菇屋/.test(storeName)) {
+          hintEl.textContent = '（OCR识别，请核对）';
+        } else {
+          hintEl.textContent = '（OCR置信度低，请仔细核对）';
+        }
+      }
     }
   }
 
@@ -1526,8 +1596,8 @@ function parseStoreInfo(text) {
 function parseTrafficData(text) {
   // ========== 关键修复：先隔离"线上流量"段落 ==========
   // OCR全文可能包含"搜索热度较高"等描述性文本，会被误匹配为指标
-  // 找到"线上流量"/"流量数据"标记，只处理该标记之后的文本
-  var trafficStartMatch = text.match(/线上\s*流量|流量\s*数据/);
+  // 使用多个锚点+模糊匹配来定位流量数据段落，应对OCR质量不稳定
+  var trafficStartMatch = text.match(/线上?\s*流量|流量\s*数据|合作\s*案例.*搜索|本\s*店\s*〇?\s*周边|案例\s*1\s*案例\s*2/);
   if (trafficStartMatch && trafficStartMatch.index > 0) {
     // 往前找到该行的起始位置（上一个换行符）
     var lineStart = text.lastIndexOf('\n', trafficStartMatch.index);
