@@ -1151,16 +1151,18 @@ function parseAndFill(text) {
     }
   }
   var safeSearchLines = allSearchLines.slice(0, competitorSectionIdx);
-  // 策略A: 匹配括号中的店名 XXX(XXX店) — 最精确（全文搜索，括号结构足够区分）
+  // 策略A: 匹配括号中的店名 XXX(XXX店) — 最精确
   // 支持 "XXX·YYY(ZZZ店)" 或 "XXX-YYY(ZZZ店)" 等含分隔符的店名
-  for (let line of allSearchLines) {
-    var m1 = line.match(/([\u4e00-\u9fa5]{2,}(?:[·\-\u00b7][\u4e00-\u9fa5]{1,})*\s*[（\(][^）\)]*(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)[）\)])/);
+  // 支持 OCR 产生的括号内空格如 "( 果壳店 )"
+  // 限制在竞争段落之前搜索，防止抓到竞争对手名如"来来海鲜大排档(只有一家店)"
+  for (let line of safeSearchLines) {
+    var m1 = line.match(/([\u4e00-\u9fa5]{2,}(?:[·\-\u00b7][\u4e00-\u9fa5]{1,})*\s*[（\(]\s*[^）\)]*?(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)\s*[）\)])/);
     if (m1 && !isUILabel(m1[1])) { storeName = m1[1]; break; }
   }
   // 策略A2: 匹配"XXX（任意文字）"括号模式（括号内没有特定后缀也行）
   if (!storeName) {
-    for (let line of allSearchLines) {
-      var m1b = line.match(/([\u4e00-\u9fa5]{3,}[（\(][\u4e00-\u9fa5\w\s]{2,}[）\)])/);
+    for (let line of safeSearchLines) {
+      var m1b = line.match(/([\u4e00-\u9fa5]{3,}[（\(]\s*[\u4e00-\u9fa5\w\s]{2,}\s*[）\)])/);
       if (m1b && !isUILabel(m1b[1]) && m1b[1].length >= 6) { storeName = m1b[1]; break; }
     }
   }
@@ -1230,8 +1232,8 @@ function parseAndFill(text) {
     // 2. 去掉中文字间的OCR空格（"上坐 传统" → "上坐传统"）
     storeName = storeName.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
     storeName = storeName.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
-    // 3. 如果包含括号店名，优先提取括号模式
-    var bracketMatch = storeName.match(/([\u4e00-\u9fa5]{2,}[（\(][^）\)]+[）\)])/);
+    // 3. 如果包含括号店名，优先提取括号模式（支持OCR产生的括号内空格）
+    var bracketMatch = storeName.match(/([\u4e00-\u9fa5]{2,}[（\(]\s*[^）\)]+?\s*[）\)])/);
     if (bracketMatch) {
       storeName = bracketMatch[1];
     } else {
@@ -1519,9 +1521,20 @@ function parseStoreInfo(text) {
   }
 }
 
-// ==================== 流量数据解析（v2 增强版）====================
-// 支持：行识别、列识别、OCR容错、缺失值"--"、数值跨行
+// ==================== 流量数据解析（v3 增强版）====================
+// 支持：段落隔离、行识别、列识别、OCR容错、缺失值"--"、数值跨行
 function parseTrafficData(text) {
+  // ========== 关键修复：先隔离"线上流量"段落 ==========
+  // OCR全文可能包含"搜索热度较高"等描述性文本，会被误匹配为指标
+  // 找到"线上流量"/"流量数据"标记，只处理该标记之后的文本
+  var trafficStartMatch = text.match(/线上\s*流量|流量\s*数据/);
+  if (trafficStartMatch && trafficStartMatch.index > 0) {
+    // 往前找到该行的起始位置（上一个换行符）
+    var lineStart = text.lastIndexOf('\n', trafficStartMatch.index);
+    if (lineStart < 0) lineStart = 0;
+    text = text.substring(lineStart);
+  }
+
   var rawLines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
   // 同时保留"合并空格"和"原始空格"两个版本，用于不同策略
   var lines = rawLines.map(function(l) { return l.replace(/\s+/g, ' ').trim(); });
@@ -1533,7 +1546,7 @@ function parseTrafficData(text) {
   var METRIC_LABELS = ['曝光量', '搜索量', '泛搜量', '精搜量', '点击量', '曝光-点击转化率', '导航量', '点击-导航转化率', '来电量', '点击-来电转化率'];
   var extracted = {};
 
-  // ========== 辅助：指标名匹配（带OCR容错）==========
+  // ========== 辅助：指标名匹配（带OCR容错 + 严格模式）==========
   function matchMetricLabel(line) {
     // OCR常见错误映射
     var norm = line
@@ -1545,16 +1558,20 @@ function parseTrafficData(text) {
       .replace(/转货率/g, '转化率').replace(/转亿率/g, '转化率')
       .replace(/率\s*$/g, '率'); // 去掉尾部空格导致的匹配失败
 
+    // 快速过滤：流量数据行必须包含至少2个数字字符（排除描述性文本如"搜索热度较高"）
+    var digitCount = (line.match(/\d/g) || []).length;
+    if (digitCount < 2) return '';
+
     if (/曝光[·\-\s]*点击[·\-\s]*转化/.test(norm)) return '曝光-点击转化率';
     if (/点击[·\-\s]*导航[·\-\s]*转化/.test(norm)) return '点击-导航转化率';
     if (/点击[·\-\s]*来电[·\-\s]*转化/.test(norm)) return '点击-来电转化率';
-    if (/泛搜[量索]?/.test(norm)) return '泛搜量';
-    if (/精搜[量索]?/.test(norm)) return '精搜量';
-    if (/曝光[量]?/.test(norm) && !/转化|点击/.test(norm)) return '曝光量';
-    if (/搜索[量]?/.test(norm) && !/泛|精/.test(norm)) return '搜索量';
-    if (/点击[量数]?/.test(norm) && !/转化|导航|来电|曝光/.test(norm)) return '点击量';
-    if (/导航[量数]?/.test(norm) && !/转化|点击/.test(norm)) return '导航量';
-    if (/来电[量数]?/.test(norm) && !/转化|点击/.test(norm)) return '来电量';
+    if (/泛搜[量索]/.test(norm)) return '泛搜量';
+    if (/精搜[量索]/.test(norm)) return '精搜量';
+    if (/曝光量/.test(norm) && !/转化|点击/.test(norm)) return '曝光量';
+    if (/搜索量/.test(norm) && !/泛|精/.test(norm)) return '搜索量';
+    if (/点击量/.test(norm) && !/转化|导航|来电|曝光/.test(norm)) return '点击量';
+    if (/导航量/.test(norm) && !/转化|点击/.test(norm)) return '导航量';
+    if (/来电量/.test(norm) && !/转化|点击/.test(norm)) return '来电量';
     return '';
   }
 
