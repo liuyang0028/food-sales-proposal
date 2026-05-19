@@ -1142,9 +1142,19 @@ function parseAndFill(text) {
   for (var si = 0; si < mergedLines.length; si++) {
     allSearchLines.push(mergedLines[si]);
   }
-  // 策略A: 匹配括号中的店名 XXX(XXX店) — 最精确
+  // 找"竞争"/"切口"/"竞品"段落的起始行，策略B只在其之前搜索，防止抓到竞争对手名字
+  var competitorSectionIdx = mergedLines.length;
+  for (var _ci = 0; _ci < mergedLines.length; _ci++) {
+    if (/竞争|切口话术|主要竞争|周边竞品|对比竞争/.test(mergedLines[_ci])) {
+      competitorSectionIdx = _ci;
+      break;
+    }
+  }
+  var safeSearchLines = allSearchLines.slice(0, competitorSectionIdx);
+  // 策略A: 匹配括号中的店名 XXX(XXX店) — 最精确（全文搜索，括号结构足够区分）
+  // 支持 "XXX·YYY(ZZZ店)" 或 "XXX-YYY(ZZZ店)" 等含分隔符的店名
   for (let line of allSearchLines) {
-    var m1 = line.match(/([\u4e00-\u9fa5]{2,}[（\(][^）\)]*(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)[）\)])/);
+    var m1 = line.match(/([\u4e00-\u9fa5]{2,}(?:[·\-\u00b7][\u4e00-\u9fa5]{1,})*\s*[（\(][^）\)]*(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)[）\)])/);
     if (m1 && !isUILabel(m1[1])) { storeName = m1[1]; break; }
   }
   // 策略A2: 匹配"XXX（任意文字）"括号模式（括号内没有特定后缀也行）
@@ -1154,10 +1164,10 @@ function parseAndFill(text) {
       if (m1b && !isUILabel(m1b[1]) && m1b[1].length >= 6) { storeName = m1b[1]; break; }
     }
   }
-  // 策略B: 匹配餐饮店名尾缀
+  // 策略B: 匹配餐饮店名尾缀 — 只在竞争段落之前搜索，防止抓到竞争对手名
   if (!storeName) {
-    var storeRe = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆))/;
-    for (let line of allSearchLines) {
+    var storeRe = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|居酒屋|蘑菇屋|烤串))/;
+    for (let line of safeSearchLines) {
       var m = line.match(storeRe);
       if (m && m[1].length >= 4 && !isUILabel(m[1])) { storeName = m[1]; break; }
     }
@@ -1556,12 +1566,26 @@ function parseTrafficData(text) {
       .replace(/20[2-3]\d[.\-\/]\d{1,2}/g, ' ')
       .replace(/20[2-3]\d/g, ' ')
       .replace(/\d{1,2}[年月日号天]/g, ' ')
-      .replace(/近\d+/g, ' ');
+      .replace(/近\d+/g, ' ')
+      .replace(/@\)/g, ' ').replace(/@/g, ' '); // 去除OCR产生的@符号噪声
 
     var tokens = cleaned.split(/\s+/);
-    var result = [];
+    // 先把相邻的"数字 万/亿/%"合并（OCR把单位拆成独立token的情况）
+    var merged = [];
     for (var i = 0; i < tokens.length; i++) {
       var t = tokens[i].trim();
+      if (!t) continue;
+      // 如果上一个token是纯数字，且当前token是独立单位，则合并
+      if (merged.length > 0 && /^[\d,.]+$/.test(merged[merged.length - 1]) && /^[万亿%]$/.test(t)) {
+        merged[merged.length - 1] = merged[merged.length - 1] + t;
+      } else {
+        merged.push(t);
+      }
+    }
+
+    var result = [];
+    for (var i = 0; i < merged.length; i++) {
+      var t = merged[i].trim();
       if (!t) continue;
       // 缺失值
       if (t === '--' || t === '—' || t === '-' || t === '一一') {
