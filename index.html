@@ -2137,148 +2137,65 @@ function T(tpl, d) {
 // ==================== 营销活动数据（招商抓手） ====================
 var MARKETING_ACTIVITIES = [
   {
-    id: 'new_customer_price',
-    name: '新客价（货补）',
-    type: '商户出资+平台补贴',
-    icon: '🆕',
-    period: '长期',
-    categories: ['轻餐'],
-    summary: '配置新客价，平台额外给货补补贴',
-    details: [
-      '选品：每个商户销量TOP3商品，配置新客价',
-      '8折方案：新客价≤8折且商家出资≥2元 → 平台补贴12%（上限3元/单）',
-      '6折方案：新客价≤6折且商家出资≥3元 → 平台补贴15%（上限5元/单）',
-      '新客价商品在货架置顶展示，库存≥100/天'
-    ],
-    script: '老板，现在配置新客价的话平台还额外给货补。比如您一个商品日常卖30，新客价打8折=24元，您出2块钱，平台再补12%就是将近3块，相当于平台帮您一起拉新客。'
-  },
-  {
-    id: 'off_peak',
-    name: '闲时特惠/分人群营销',
-    type: '商户出资',
-    icon: '⏰',
-    period: '4.1-6.30',
-    categories: ['all'],
-    summary: '满足超划算标准可进A品区，获额外流量',
-    details: [
-      '达到超划算S档准入门槛 → 进超划算A品区',
-      '平台给额外流量资源加持',
-      '注意：每天有补贴金额限制，花完即止'
-    ],
-    script: '现在配置闲时特惠的话，达到超划算标准就能进A品区拿到额外流量，相当于免费的曝光资源。'
-  },
-  {
     id: 'sweep_coupon',
-    name: '美食扫街券（C补）',
-    type: '平台出资',
+    name: '美食扫街券',
+    tag: '平台出资',
+    tagColor: '#10b981',
     icon: '🎫',
-    period: '至5.31',
-    categories: ['all'],
-    summary: '平台发券引流，商户无需额外出资',
-    details: [
-      '日常档：12-2、59-6、89-9、159-15、299-30（平台出50-60%）',
-      '大促档：12-2、59-8、89-12、159-20、299-40（平台出50-70%）',
-      '用户每天可领1次券包，可与品质联盟叠加',
-      '商户只需报名活动商品即可享受扫街券流量'
-    ],
-    script: '现在平台有扫街券活动，用户搜美食就能领到优惠券，券的钱大部分平台出。您只要报名参加，平台帮您做引流，相当于免费获客。'
-  },
-  {
-    id: 'expansion_coupon_festival',
-    name: '五一膨胀红包（C补）',
-    type: '平台主出资',
-    icon: '🧧',
-    period: '五一大促期间',
-    categories: ['all'],
-    summary: '叠加在扫街券基础上，商户仅出3.6元/单，未核销不扣费',
-    details: [
-      '推荐档位：满89元减12，商户仅出资3.6元，平台出资8.4元',
-      '在原扫街券基础上叠加，双重优惠吸引顾客',
-      '未核销的情况下不会扣费，零风险',
-      '报名成功后额外获得平台曝光展位加持',
-      '套餐竞争力可超越美团/抖音同品类商品'
-    ],
-    script: '老板，五一期间还有一个膨胀红包活动，是在原本平台全部出资的扫街券基础上叠加的。建议您报名满89元减12这个档位，您只用出3.6元，剩下8.4元全平台出，而且没有核销的情况下是不会扣费的，完全没有风险。报名成功后平台还会给您的门店额外提供曝光展位，这样您的套餐跟美团抖音比更有竞争力。'
+    summary: '平台发券引流，用户搜美食可领优惠券，商户报名即可享受额外流量',
+    script: '现在平台有扫街券，用户搜附近美食就能领券，大部分钱平台出。您报名参加，平台帮您做引流，相当于免费获客。'
   },
   {
     id: 'expansion_coupon',
-    name: '反圈膨胀券（C补）',
-    type: '平台出资',
-    icon: '🎯',
-    period: '4.1-5.31',
-    categories: ['all'],
-    summary: '算法智能发券，补贴率3-5%，可与品质联盟叠加',
-    details: [
-      '4-5张算法满减膨胀券，用户每天可领1次',
-      '平台补贴率3%-5%，算法自动匹配',
-      '可与品质联盟货补叠加，双重优惠吸引顾客'
-    ],
-    script: '平台现在有膨胀券活动，算法自动给您店的用户发满减券，补贴率3到5个点，还能跟品质联盟叠加，顾客看到双重优惠下单率更高。'
+    name: '膨胀红包',
+    tag: '平台出资',
+    tagColor: '#10b981',
+    icon: '🧧',
+    summary: '节假日大促叠加活动，平台出资膨胀，未核销不扣费，零风险',
+    script: '膨胀红包是平台在大促期间出的，叠在扫街券上，顾客看到双重优惠下单更快，您这边没有核销的话不会扣费，没有风险。'
   },
   {
     id: 'quality_alliance',
-    name: '品质联盟补贴（B补）',
-    type: '平台出资',
+    name: '品质联盟补贴',
+    tag: '平台出资',
+    tagColor: '#10b981',
     icon: '🏅',
-    period: '4.1-5.31',
-    categories: ['all'],
-    summary: '入围门店商品自动立减2-3%，平台买单',
-    details: [
-      '入围门店随机商品享受平台立减补贴',
-      '平均补贴率2%-3%，单笔最高立减10元',
-      '可与膨胀券叠加',
-      '入围条件：账期≥3天 + 三星/五星货架 + 有团购/代金券'
-    ],
-    script: '您入围品质联盟的话，平台直接给您的商品做立减，平均补2-3个点，最高一单减10块，这钱完全平台出，顾客看到价格更有吸引力。'
+    summary: '入围门店商品自动立减，平台买单，顾客无感知享优惠',
+    script: '入围品质联盟的话，平台直接给您的商品做立减，这钱全平台出，顾客看到价格更有吸引力，您不用多出一分钱。'
   },
   {
     id: 'bet_activity',
-    name: '对赌活动（B补）',
-    type: '平台出资',
+    name: '对赌活动',
+    tag: '平台出资',
+    tagColor: '#10b981',
     icon: '🎲',
-    period: '长期',
-    categories: ['all'],
-    summary: '核销达门槛即可参与，完成目标每单补贴最高30元，全月补贴率≤7%',
-    details: [
-      '入围条件：近期核销数据达到平台对赌门槛，账期≥3天，有团购/代金券',
-      '常规品类单品补贴上限≤30元/单（烧烤/自助/中餐可特批≤50元）',
-      '全月补贴率≤7%，补贴率=补贴金额/支付GMV',
-      '连锁品牌可打包旗下多门店参与，快速提升品牌在高德整体知名度',
-      '可搭配置顶展示位+多广告位曝光模式，放大核销转化'
-    ],
-    script: '老板，咱这边数据显示您门店近几个月的线上核销已经达到了参与高德对赌活动的门槛，这个活动门槛不是谁都能达到的。参与对赌后，完成目标时平台每单补贴最高可到30元，这钱全平台出，需要您这边把套餐价格设置得比友商更有竞争力，达成目标后等于平台帮您倒贴引流。如果您旗下有多个门店，还可以打包参与，一下子把咱们品牌在高德的整体知名度拉起来，为旅游旺季做好承接，非常划算。'
+    summary: '达到核销门槛可参与，完成目标每单平台补贴，不是所有商户都能入围',
+    script: '老板，您这边数据已经达到对赌活动的入围门槛了，这个不是随便哪家都能参加的。入围后完成目标，平台每单补贴，等于平台帮您倒贴引流。'
   },
   {
     id: 'combo_activity',
     name: '组品套餐+大促货补',
-    type: '平台出资',
+    tag: '平台出资',
+    tagColor: '#10b981',
     icon: '🍱',
-    period: '大促期间',
-    categories: ['正餐'],
-    summary: '大促期间将热销菜品组合成新套餐，平台配最高20元货补，每天限10单/POI',
-    details: [
-      '适用品类：东南亚菜、火锅、烧烤、中餐、日韩料理、西餐',
-      '将门店最受欢迎的2个菜品组合出新套餐，平台配最高20元货补/单',
-      '每天限量10单，货补全部由平台出资，商户零出资',
-      '门店近30天有动销且订单≥1',
-      '套餐商品打标"扫街必选"，获额外曝光展位',
-      '叠加五一膨胀红包后套餐竞争力超越其他平台'
-    ],
-    script: '老板，现在是大促期间，建议您把店里最受欢迎的两个菜品组合起来推出一个新套餐。平台会给新套餐配置最高20元的货补，每天限量10单，这钱全部由平台出资来帮您做活动，您一分钱不用多出。套餐上线后还会打上"扫街必选"的标，获得额外曝光展位，比您在美团抖音的套餐竞争力更强。您方便的话把需要报名的套餐菜品勾选确认一下，我们马上帮您配置。'
+    summary: '大促期间将热销菜品打包成套餐，平台配货补，获"扫街必选"曝光标',
+    script: '把您店里最受欢迎的两个菜品组合成套餐，平台给配货补，套餐上线后还会打上扫街必选的标，获得额外展位，比美团抖音的套餐竞争力更强。'
+  },
+  {
+    id: 'new_customer_price',
+    name: '新客价货补',
+    tag: '商户+平台',
+    tagColor: '#f59e0b',
+    icon: '🆕',
+    summary: '配置新客价，平台额外叠加货补，帮商户一起拉新客',
+    script: '您配一个新客价，平台还会额外叠加货补补贴，相当于平台帮您一起出钱拉新客，效果比自己单独做活动好很多。'
   }
 ];
 
 // 根据商户品类返回相关营销活动
 function getRelevantActivities(category) {
-  var cat = (category || '').toLowerCase();
-  var isLightMeal = /奶茶|咖啡|甜品|蛋糕|面包|小吃|快餐|粉|面|饮品|果汁|冰淇淋|烘焙|零食|鸡排|汉堡|披萨|炸鸡/.test(cat);
-  var isFormalDining = /火锅|烧烤|中餐|日料|韩料|西餐|东南亚|自助|海鲜|正餐|日韩/.test(cat);
-  return MARKETING_ACTIVITIES.filter(function(act) {
-    if (act.categories.includes('all')) return true;
-    if (act.categories.includes('轻餐') && isLightMeal) return true;
-    if (act.categories.includes('正餐') && isFormalDining) return true;
-    return false;
-  });
+  // 简化：所有活动都展示，作为噱头说明平台资源丰富
+  return MARKETING_ACTIVITIES;
 }
 
 // ==================== 品牌顶展政策 ====================
@@ -2592,27 +2509,25 @@ function renderOutput(primary, d) {
   }
   html += '</div></div>';
 
-  // === 3. 营销活动（独立区块，详细内容可收起）===
+  // === 3. 营销活动（独立区块，默认收起）===
   var activities = getRelevantActivities(d.category);
   if (activities.length > 0) {
     html += '<div class="collapsible-section">';
-    html += '<div class="collapsible-header" onclick="toggleSection(this)"><h2 style="color:#1d4ed8;">🎁 营销活动（' + activities.length + '项可用）</h2><span class="collapsible-toggle collapsed">▼ 展开</span></div>';
+    html += '<div class="collapsible-header" onclick="toggleSection(this)"><h2 style="color:#1d4ed8;">🎁 加码平台营销活动</h2><span class="collapsible-toggle collapsed">▼ 展开</span></div>';
     html += '<div class="collapsible-body hidden">';
-    html += '<div style="font-size:12px;color:#475569;margin-bottom:12px;">以下活动入围后，平台帮您做引流补贴，大部分不需要商户额外出资：</div>';
+    html += '<div style="font-size:12px;color:#475569;margin-bottom:12px;padding:8px 12px;background:#eff6ff;border-radius:8px;border-left:3px solid #3b82f6;">以下为平台现有营销资源，可结合签约时机作为谈判加码筹码，具体入围条件以实际政策为准</div>';
     activities.forEach(function(act) {
-      var isPlatform = act.type.indexOf('平台') >= 0;
-      var tagColor = isPlatform ? '#10b981' : '#f59e0b';
-      var tagText = isPlatform ? '平台补贴' : '商户+平台';
-      html += '<div style="background:#fff;border-radius:8px;padding:12px 14px;margin-bottom:10px;border:1px solid #e2e8f0;">';
-      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
-      html += '<span style="font-size:16px;">' + act.icon + '</span>';
+      html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:8px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">';
+      html += '<span style="font-size:18px;flex-shrink:0;margin-top:1px;">' + act.icon + '</span>';
+      html += '<div style="flex:1;">';
+      html += '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">';
       html += '<b style="font-size:13px;color:#1e293b;">' + act.name + '</b>';
-      html += '<span style="font-size:10px;background:' + tagColor + ';color:#fff;padding:1px 8px;border-radius:10px;">' + tagText + '</span>';
-      html += '<span style="font-size:10px;color:#94a3b8;margin-left:auto;">有效期：' + act.period + '</span>';
+      html += '<span style="font-size:10px;background:' + act.tagColor + ';color:#fff;padding:1px 7px;border-radius:10px;">' + act.tag + '</span>';
       html += '</div>';
-      html += '<div style="font-size:12px;color:#475569;margin-bottom:6px;">' + act.summary + '</div>';
-      html += '<div style="font-size:11px;color:#64748b;line-height:1.7;">';
-      act.details.forEach(function(dt) { html += '\u2022 ' + dt + '<br>'; });
+      html += '<div style="font-size:12px;color:#64748b;margin-bottom:5px;">' + act.summary + '</div>';
+      html += '<div style="font-size:11px;color:#1d4ed8;background:#eff6ff;border-radius:5px;padding:5px 9px;line-height:1.6;">';
+      html += '<b style="color:#94a3b8;">话术参考：</b>' + act.script;
+      html += '</div>';
       html += '</div></div>';
     });
     html += '</div></div>';
