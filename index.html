@@ -324,8 +324,35 @@ body {
   width: 120px; height: 72px;
   object-fit: cover; object-position: top;
   border-radius: 5px; border: 1px solid #e2e8f0;
+  cursor: zoom-in; transition: box-shadow 0.15s;
 }
+.dze-item img:hover { box-shadow: 0 2px 8px rgba(59,130,246,0.25); border-color: #93c5fd; }
 .dze-item span { font-size: 10px; color: #64748b; }
+
+/* 示例图放大弹窗 */
+.img-preview-mask {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); z-index: 9999;
+  align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+.img-preview-mask.show { display: flex; }
+.img-preview-mask img {
+  max-width: 88vw; max-height: 82vh;
+  border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  object-fit: contain;
+}
+.img-preview-title {
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  color: #fff; font-size: 14px; font-weight: 600;
+  background: rgba(0,0,0,0.4); padding: 4px 16px; border-radius: 20px;
+}
+.img-preview-close {
+  position: absolute; top: 16px; right: 20px;
+  color: #fff; font-size: 24px; cursor: pointer; line-height: 1;
+  background: rgba(0,0,0,0.3); width: 32px; height: 32px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
 .dze-plus { font-size: 16px; color: #cbd5e1; font-weight: 700; }
 
 /* 字段说明小灰字 */
@@ -654,12 +681,12 @@ body {
         <b style="font-size:13px;">粘贴 / 拖入截图</b>
         <div class="dze-row">
           <div class="dze-item">
-            <img src="screenshot-example-1.png" alt="商机详情">
+            <img src="screenshot-example-1.png" alt="商机详情" onclick="event.stopPropagation();showImgPreview(this.src,'商机详情截图示例')" title="点击放大">
             <span>① 商机详情</span>
           </div>
           <div class="dze-plus">+</div>
           <div class="dze-item">
-            <img src="screenshot-example-2.png" alt="线上流量">
+            <img src="screenshot-example-2.png" alt="线上流量" onclick="event.stopPropagation();showImgPreview(this.src,'线上流量截图示例')" title="点击放大">
             <span>② 线上流量</span>
           </div>
         </div>
@@ -695,7 +722,7 @@ body {
     </div>
 
     <div class="form-section">
-      <div class="form-section-title"><span style="font-size:14px;">📋</span> 商户信息（对照截图填写）</div>
+      <div class="form-section-title"><span style="font-size:14px;">📋</span> 商户信息（系统读取截图，需核验校正）</div>
       <div class="form-grid">
         <div class="form-group full">
           <label>商户名称 <span class="req">*</span></label>
@@ -842,6 +869,14 @@ body {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- 示例图放大弹窗 -->
+<div class="img-preview-mask" id="imgPreviewMask" onclick="closeImgPreview()">
+  <div class="img-preview-title" id="imgPreviewTitle"></div>
+  <img id="imgPreviewImg" src="" alt="" onclick="event.stopPropagation()">
+  <div class="img-preview-close" onclick="closeImgPreview()">✕</div>
+</div>
+
 <div class="modal-overlay" id="historyModal">
   <div class="modal">
     <h3>历史记录</h3>
@@ -851,6 +886,19 @@ body {
 </div>
 
 <script>
+// ==================== 示例图放大弹窗 ====================
+function showImgPreview(src, title) {
+  document.getElementById('imgPreviewImg').src = src;
+  document.getElementById('imgPreviewTitle').textContent = title || '';
+  document.getElementById('imgPreviewMask').classList.add('show');
+}
+function closeImgPreview() {
+  document.getElementById('imgPreviewMask').classList.remove('show');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeImgPreview();
+});
+
 // ==================== 截图输入 + OCR ====================
 const dropZone = document.getElementById('dropZone');
 let ocrQueue = [];
