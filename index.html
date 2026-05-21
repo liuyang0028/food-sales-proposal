@@ -1290,6 +1290,17 @@ function parseAndFill(text) {
 
   // 辅助：判断是否是UI标签
   function isUILabel(s) { return UI_LABEL_BLACKLIST.test(s); }
+  // 辅助：判断是否是OCR垃圾文本（中文里混了随机拉丁字母/数字/符号）
+  function isOCRGarbage(s) {
+    if (!s) return true;
+    // 如果包含3个以上不连续的拉丁字母片段（如 sz、3hTA、won），视为垃圾
+    var latinFragments = s.match(/[a-zA-Z]{2,}/g);
+    if (latinFragments && latinFragments.length >= 2) return true;
+    // 如果中文占比低于50%，视为垃圾
+    var cnChars = s.match(/[\u4e00-\u9fa5]/g);
+    if (!cnChars || cnChars.length / s.length < 0.5) return true;
+    return false;
+  }
 
   // 辅助：设置字段值（带OCR标记）
   function setField(id, val) {
@@ -1326,21 +1337,26 @@ function parseAndFill(text) {
   // 限制在竞争段落之前搜索，防止抓到竞争对手名如"来来海鲜大排档(只有一家店)"
   for (let line of safeSearchLines) {
     var m1 = line.match(/([\u4e00-\u9fa5]{2,}(?:[·\-\u00b7][\u4e00-\u9fa5]{1,})*\s*[（\(]\s*[^）\)]*?(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)\s*[）\)])/);
-    if (m1 && !isUILabel(m1[1])) { storeName = m1[1]; break; }
+    if (m1 && !isUILabel(m1[1]) && !isOCRGarbage(m1[1])) { storeName = m1[1]; break; }
   }
   // 策略A2: 匹配"XXX（任意文字）"括号模式（括号内没有特定后缀也行）
   if (!storeName) {
     for (let line of safeSearchLines) {
       var m1b = line.match(/([\u4e00-\u9fa5]{3,}[（\(]\s*[\u4e00-\u9fa5\w\s]{2,}\s*[）\)])/);
-      if (m1b && !isUILabel(m1b[1]) && m1b[1].length >= 6) { storeName = m1b[1]; break; }
+      if (m1b && !isUILabel(m1b[1]) && !isOCRGarbage(m1b[1]) && m1b[1].length >= 6) { storeName = m1b[1]; break; }
     }
   }
   // 策略B: 匹配餐饮店名尾缀 — 只在竞争段落之前搜索，防止抓到竞争对手名
   if (!storeName) {
-    var storeRe = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋|烤串))/;
+    // 泛后缀（食店/菜馆/饭店等）要求前面至少3个汉字，防"太平食店"类误匹配
+    var storeRe = /([\u4e00-\u9fa5]{3,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋|烤串))/;
+    // 品牌感强的专用名放宽到前面2个汉字
+    var brandRe = /([\u4e00-\u9fa5]{2,}(?:牛肉面|烧烤|烤肉|小龙虾|螺蛳粉|火锅))/;
     for (let line of safeSearchLines) {
       var m = line.match(storeRe);
-      if (m && m[1].length >= 4 && !isUILabel(m[1])) { storeName = m[1]; break; }
+      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1])) { storeName = m[1]; break; }
+      m = line.match(brandRe);
+      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1])) { storeName = m[1]; break; }
     }
   }
   // 策略C: "商机详情"/"商户名称"标签后的文本行
@@ -1348,12 +1364,12 @@ function parseAndFill(text) {
     for (var li = 0; li < mergedLines.length; li++) {
       if (/商机详情|商户名称|门店名称/.test(mergedLines[li])) {
         var afterLabel = mergedLines[li].replace(/.*(?:商机详情|商户名称|门店名称)[：:\s]*/,'').trim();
-        if (afterLabel.length >= 3 && afterLabel.length < 30 && /[\u4e00-\u9fa5]/.test(afterLabel) && !isUILabel(afterLabel)) {
+        if (afterLabel.length >= 3 && afterLabel.length < 30 && /[\u4e00-\u9fa5]/.test(afterLabel) && !isUILabel(afterLabel) && !isOCRGarbage(afterLabel)) {
           storeName = afterLabel; break;
         }
         for (var ni = 1; ni <= 3 && li + ni < mergedLines.length; ni++) {
           var nextLine = mergedLines[li + ni].trim();
-          if (nextLine.length >= 4 && nextLine.length < 40 && /[\u4e00-\u9fa5]{3,}/.test(nextLine) && !isUILabel(nextLine) && !/^\d/.test(nextLine)) {
+          if (nextLine.length >= 4 && nextLine.length < 40 && /[\u4e00-\u9fa5]{3,}/.test(nextLine) && !isUILabel(nextLine) && !isOCRGarbage(nextLine) && !/^\d/.test(nextLine)) {
             storeName = nextLine; break;
           }
         }
@@ -1367,7 +1383,7 @@ function parseAndFill(text) {
       if (line.length > 40 || line.length < 4) continue;
       if (/上坐|传统|过桥|黄焖|老字号|正宗|总店|旗舰/.test(line)) {
         var cleaned = line.replace(/[@#<>《》\[\]【】\d]/g,'').trim();
-        if (cleaned.length >= 3 && !isUILabel(cleaned)) { storeName = cleaned; break; }
+        if (cleaned.length >= 3 && !isUILabel(cleaned) && !isOCRGarbage(cleaned)) { storeName = cleaned; break; }
       }
     }
   }
@@ -1384,7 +1400,7 @@ function parseAndFill(text) {
       var chineseRuns = line.match(/[\u4e00-\u9fa5（\(）\)]{4,}/g);
       if (chineseRuns) {
         for (var cr of chineseRuns) {
-          if (!isUILabel(cr) && cr.length > bestCandidate.length) {
+          if (!isUILabel(cr) && !isOCRGarbage(cr) && cr.length > bestCandidate.length) {
             bestCandidate = cr;
           }
         }
@@ -1411,7 +1427,7 @@ function parseAndFill(text) {
     }
     // 5. 最终去除残留空格
     storeName = storeName.replace(/\s+/g, '');
-    if (storeName.length >= 2 && !isUILabel(storeName)) {
+    if (storeName.length >= 2 && !isUILabel(storeName) && !isOCRGarbage(storeName)) {
       setField('f_store', storeName);
       // 置信度标记：提示用户核对OCR识别结果
       var storeInput = document.getElementById('f_store');
