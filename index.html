@@ -2063,8 +2063,11 @@ function getHoliday() {
 function matchScenario(d) {
   let primary = 'cold_start';
   let secondary = [];
-  if (d.status === '新户') primary = 'cold_start';
-  else if (d.status === '续签' || d.status === '断约') primary = 'renewal';
+  if (d.status === '新户') {
+    // 品类专属话术优先
+    const catTpl = SCRIPT_TPL_CATEGORY[d.category];
+    primary = catTpl ? 'cold_start_' + d.category : 'cold_start';
+  } else if (d.status === '续签' || d.status === '断约') primary = 'renewal';
   else if (d.status === '升档') primary = 'renewal';
   if (['海鲜','烧烤'].includes(d.category)) secondary.push('peak_season');
   if (d.targets && d.targets.includes('品牌顶展')) secondary.push('peak_season');
@@ -2411,6 +2414,45 @@ const SCRIPT_TPL = {
   }
 };
 
+// ==================== 品类专属话术模板 ====================
+const SCRIPT_TPL_CATEGORY = {
+  // 烧烤：夜市/旺季场景，强调夏季时间窗口+截流
+  '烧烤': {
+    opener: '老板您好，我是高德地图{city}这边烧烤品类的运营顾问，叫我小{salutation}就行。您是{store}的老板吧？\n\n我今天联系您，是因为现在正好是烧烤旺季——高德上{city}烧烤的搜索量这两个月比平时高了将近一倍。我调了一下您周边的情况，有几家烧烤店最近开始加大投入抢流量，想第一时间给您提个醒。\n\n您{store}一般旺季是几点开始上座？',
+    hook: '（听老板回答后）对，烧烤旺季就这几个月，窗口很短。我帮您看了一下周边——{exposure_nearby ? "做了推广的烧烤商户曝光量能到{exposure_nearby}，" : "周边做了推广的烧烤店，曝光量比没做的高3-5倍，"}搜"烧烤""撸串""夜宵"排前3的基本都在投。\n\n旺季顾客搜烧烤，一般看到前3家就决定了，后面的基本没机会。{price_self ? "您人均{price_self}元，旺季每周多来10桌，一个月多{monthly_add}块，" : "旺季每周多10桌新客，广告费轻松就回来了，"}而且旺季结束广告金还在账上，淡季继续用，不浪费。\n\n您平时周末能翻几台？',
+    benefit: '{city}有个烧烤商户，跟{store}差不多的体量，五一前投了10000块，旺季三个月下来新客增了40%，广告费2个月就回本了，剩一个月的广告金淡季还在消耗。\n\n{price_advantage}\n\n商户通免费送，美团那边同等服务要2000-4000一年。广告金预存到账户不过期，旺季花完了淡季接着用，账户里的钱永远是您的。',
+    close: '烧烤旺季就到8月，现在进场还赶得上高峰期。{store}我给您准备了三档：\n\n• 试水档 6000元：旺季感受一下效果，广告金花不完不过期；\n• 主流档 10000元（{city}烧烤商户主流选择）：多送1000广告金，OCPC自动找周边想吃烧烤的客人，{daily_tables ? "每天{daily_tables}桌就回本，" : ""}整个旺季把量跑出来；\n• 头部档 20000元：锁住{city}烧烤搜索前三位，旺季全程截流。\n\n旺季每晚多3-5桌，一个月就把广告费赚回来了。您是先试水6000看看，还是直接10000锁住旺季位置？',
+    retreat: '好的，那我先帮您把{store}的门店信息优化一下，加上"烧烤""夜宵""撸串"这些关键词标签，旺季搜索权重提升，这个免费。加我企业微信，旺季有流量资源名额开放，第一时间通知您。'
+  },
+
+  // 火锅：大桌聚会场景，强调电话预定+包厢大桌+翻台
+  '火锅': {
+    opener: '老板您好，我是高德地图{city}火锅品类的运营顾问，叫我小{salutation}就行。您是{store}的老板吧？\n\n我调了一下{city}的火锅数据，跟您说一个发现——高德上火锅预定电话量这两年一直在涨，特别是周末大桌和包厢预定，顾客会提前打电话确认。有几家{city}的火锅店，电话预定量里超过60%是从高德导航过来的。\n\n{store}这边包厢一般提前多久会被订满？',
+    hook: '（听老板回答后）对，火锅不一样——大桌聚会、家庭聚餐，客人会提前规划，高德搜到店就顺手打电话确认有没有位置。{exposure_nearby ? "周边做了推广的火锅店曝光量{exposure_nearby}，" : "周边做了推广的火锅店，电话量比没做的高2-3倍，"}而且这部分客人基本是正价消费，不用团购核销，客单价高。\n\n{price_self ? "您人均{price_self}元，一桌大桌平均消费{monthly_add}以上，多来10桌一个月就多" + Math.round(parseFloat(d.price_self||80)*40) + "块，" : "大桌聚会客单价高，多来几桌一个月差距就出来了，"}这部分流量现在都被做了推广的竞对截走了。\n\n您{store}附近有几家做了推广的火锅店？',
+    benefit: '{city}有个火锅商户，做了推广之后电话预定量增加了30%以上，包厢提前3天就被预定满。他投了10000块，靠大桌聚会客户，1个月就回本了。\n\n高德上搜火锅的用户特征：开车来的男性多，不看团购，直接到店正价消费。{price_advantage}\n\n商户通免费给您开通，广告金不过期，一桌大桌就把几天的广告费赚回来了。',
+    close: '根据{store}的情况，我给您准备了三档：\n\n• 试水档 6000元：感受效果，专门针对"包厢预定""大桌聚餐"关键词做推流；\n• 主流档 10000元：OCPC自动找周边要吃火锅的客人，{daily_tables ? "每天{daily_tables}桌就回本，" : ""}周末大桌多来几桌一个月就差不多了；\n• 头部档 20000元：锁住{city}火锅搜索前三，同行门店下方全程展示截流。\n\n今天确认的话，我今晚把推流关键词做好，这周末就能看到数据变化。您是先6000试水，还是直接10000？',
+    retreat: '好的，我先帮您把{store}的门店信息优化——加上"包厢预定""大桌聚餐""家庭聚会"这些标签，提升搜索匹配度，免费。加我企业微信，后面有专项资源第一时间告诉您。'
+  },
+
+  // 小龙虾：夏季时间窗口短，越早越好
+  '小龙虾': {
+    opener: '老板您好，我是高德地图{city}这边的运营顾问，叫我小{salutation}就行。您是{store}的老板吧？\n\n我今天联系您是因为——小龙虾的旺季窗口就这几个月，5月到8月，现在已经进去了。我调了一下{city}的小龙虾数据，现在搜"小龙虾""夜宵""龙虾"的量已经起来了，但{store}附近有几家店最近开始做推广抢位置，我想第一时间跟您说一下。\n\n您{store}今年小龙虾旺季准备做哪些推广？',
+    hook: '（听老板回答后）对，小龙虾这个品类特殊——季节性极强，旺季就这4个月，错过了要等明年。{exposure_nearby ? "周边做了推广的小龙虾/烧烤店，曝光量已经到{exposure_nearby}了，" : "周边做了推广的店，这两个月曝光量涨得很快，"}搜小龙虾排前3的，基本卡住了旺季大半的流量。\n\n您现在进场还赶得上——旺季剩下大概3个月，{price_self ? "人均{price_self}元，每周多来10桌，一个月多{monthly_add}块，三个月就是" + Math.round(parseFloat(d.price_self||80)*10*4*3) + "块额外营业额，" : "每周多10桌新客，三个月下来广告费很容易就回来了，"}广告金花不完旺季结束还在账上，淡季继续用。\n\n您现在每周大概有多少桌是第一次来的新客？',
+    benefit: '{city}有个小龙虾商户，旺季前投了10000块，整个旺季搜索排名稳在前3，新客增加了近50%，广告费2个月回本，还有一个月的广告金淡季在消耗。\n\n{price_advantage}\n\n商户通免费送。广告金预存不过期——旺季花多少扣多少，花不完了留着淡季用。这不是付费消费，是存进账户里的您自己的钱。',
+    close: '小龙虾旺季窗口不多了，现在进场还能赶上高峰。{store}我给您三个档：\n\n• 试水档 6000元：先感受旺季效果，广告金花不完不过期，淡季接着用；\n• 主流档 10000元（主流选择）：送1000广告金，OCPC自动找附近搜小龙虾的客人，{daily_tables ? "每天{daily_tables}桌回本，" : ""}旺季全程跑量；\n• 头部档 20000元：锁住{city}小龙虾/夜宵搜索前三，旺季不被竞对截流。\n\n旺季每天多来5桌，一个月就把广告费赚回来了。今天确认的话，我今晚把旺季推流计划做好，明天开始跑量。您是6000先试，还是10000锁旺季？',
+    retreat: '好的，我先帮您把{store}加上"小龙虾""夜宵""龙虾啤酒"这些旺季关键词标签，提升旺季搜索权重，不收费。加我企业微信，旺季有流量资源名额开放，第一时间告诉您。'
+  },
+
+  // 水产海鲜：高客单+开车男性客群+竞对少
+  '水产海鲜': {
+    opener: '老板您好，我是高德地图{city}水产海鲜品类的运营顾问，叫我小{salutation}就行。您是{store}的老板吧？\n\n我今天联系您，是因为{city}做高档海鲜的店不多，高德上搜"海鲜""水产""海鲜大排档"的流量很集中，竞争不像普通中餐那么激烈。我看了一下{store}周边的情况，有几个机会点想跟您聊聊。\n\n{store}来的客人一般是哪些——家庭聚餐多，还是商务聚餐多？',
+    hook: '（听老板回答后）对，吃海鲜的客人有个特点——基本是开车来的，手机导航找店是第一入口。高德现在导航市场占有率70%以上，车机里面基本都是高德。所以搜海鲜、用导航来的这部分客人，绝大多数是通过高德进来的。\n\n{exposure_nearby ? "周边做了推广的海鲜/高端餐饮，曝光量{exposure_nearby}，" : "做了推广的餐厅，在导航结束页和搜索页都能被推荐，"}这部分流量现在很集中——就几家在做推广，其他都没有，竞争没那么激烈。\n\n{price_self ? "您人均{price_self}元，{price_advantage}，{daily_tables}桌就回本，" : "客单价高，来一桌顶普通餐厅好几桌，"}这个ROI比大多数餐厅都好算。',
+    benefit: '{city}有个海鲜大排档，投了10000块，来的客人里开车导航过来的占了60%以上，这部分都是正价消费，不用核销，月营业额增了30%，广告费40天就回来了。\n\n高德客群跟美团不一样——美团主要是团购核销客，高德主要是导航到店的散客，正价消费多，{price_advantage}。\n\n{policy}，商户通免费给您开通，广告金不过期，用多少扣多少。',
+    close: '根据{store}的情况，我给您三个方案：\n\n• 试水档 6000元：先感受高德导航客群的质量，周来一看数据；\n• 主流档 10000元：OCPC自动找附近有消费力的客人，{daily_tables ? "每天{daily_tables}桌回本，" : ""}一桌海鲜就把好几天广告费赚回来；\n• 头部档 20000元：锁住{city}海鲜/水产搜索前三，导航结束页推荐，把开车来{city}吃海鲜的客人全截过来。\n\n今天确认，我今晚把方案做好，明天开始跑量，您两周后能明显看到数据变化。试水档还是主流档？',
+    retreat: '好的，我先帮您把{store}的图片和标签优化一下——加上"海鲜""水产""正宗海鲜"这些高搜索量关键词，提升自然搜索权重，免费。加我企业微信，后面有针对高客单餐饮的专项政策，第一时间通知您。'
+  }
+};
+
 // ==================== 生成主流程 ====================
 let _lastFullScript = '';
 let _currentData = {};
@@ -2437,7 +2479,14 @@ function generate() {
 
 // ==================== 统一输出渲染 ====================
 function renderOutput(primary, d) {
-  const tpl = SCRIPT_TPL[primary];
+  // 品类专属模板优先，回退到通用模板
+  let tpl;
+  if (primary.startsWith('cold_start_')) {
+    var cat = primary.replace('cold_start_', '');
+    tpl = SCRIPT_TPL_CATEGORY[cat] || SCRIPT_TPL['cold_start'];
+  } else {
+    tpl = SCRIPT_TPL[primary];
+  }
   let html = '';
 
   // === 1. 报价方案（最上，默认展开）===
@@ -2448,8 +2497,11 @@ function renderOutput(primary, d) {
   html += '</div></div>';
 
   // === 2. 话术（报价方案下方，默认展开）===
+  var scriptLabel = SCRIPT_TPL_CATEGORY[d.category] && d.status === '新户'
+    ? '📞 话术 <span style="font-size:11px;background:#d97706;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;">' + d.category + '专属</span>'
+    : '📞 话术';
   html += '<div class="collapsible-section">';
-  html += '<div class="collapsible-header" onclick="toggleSection(this)"><h2 style="color:#1d4ed8;">📞 话术</h2><span class="collapsible-toggle">▼ 收起</span></div>';
+  html += '<div class="collapsible-header" onclick="toggleSection(this)"><h2 style="color:#1d4ed8;">' + scriptLabel + '</h2><span class="collapsible-toggle">▼ 收起</span></div>';
   html += '<div class="collapsible-body">';
   if (tpl) {
     const sections = [
