@@ -1276,7 +1276,7 @@ function clearOcrFields() {
 
 // ==================== OCR 文本解析 ====================
 // UI标签黑名单：商机详情/流量页面的系统文字，不是店名
-var UI_LABEL_BLACKLIST = /所属商圈|连锁门店|门店设施|门店信息|门店量|门店数|门店评|门店详情|商机详情|商机概述|线上流量|流量数据|搜索转化|点击转化|导航转化|电话转化|本店|周边|同城|商户信息|对照截图|截图填写|售卖目标|商户状态|已自动|识别完成|请选择|品类|城市|竞争|异议|当前政策|查看原文|设施|查看|编辑|更多|收藏|操作|状态|收起|展开|返回|关闭|确认|取消|提交|保存|删除|刷新|加载|详情|基本信息|经营信息|经营类目|联系方式|营业时间|环境图|菜品图|门头照|领取人|认领状态|认领时间|待开店|待续约|已到期|合作中|跟进中|私淘|私海|公海|Leads|当前阶段|历史阶段|商机建联|意向培养|开店签约|成交签约|沉默激活|流失挽回|解决方案|报价单|优秀案例|待完成|去完成/;
+var UI_LABEL_BLACKLIST = /所属商圈|连锁门店|门店设施|门店信息|门店量|门店数|门店评|门店详情|商机详情|商机概述|线上流量|流量数据|搜索转化|点击转化|导航转化|电话转化|本店|周边|同城|商户信息|对照截图|截图填写|售卖目标|商户状态|已自动|识别完成|请选择|品类|城市|竞争|异议|当前政策|查看原文|设施|查看|编辑|更多|收藏|操作|状态|收起|展开|返回|关闭|确认|取消|提交|保存|删除|刷新|加载|详情|基本信息|经营信息|经营类目|联系方式|营业时间|环境图|菜品图|门头照|领取人|认领状态|认领时间|待开店|待续约|已到期|合作中|跟进中|私淘|私海|公海|Leads|当前阶段|历史阶段|商机建联|意向培养|开店签约|成交签约|沉默激活|流失挽回|解决方案|报价单|优秀案例|待完成|去完成|门店地址|合作时间|距离|湖南省|长沙市|岳麓区|天心区|开福区|雨花区|芙蓉区|望城区|长沙县|浏阳市|宁乡市/;
 
 function parseAndFill(text) {
   let filled = 0;
@@ -1337,7 +1337,7 @@ function parseAndFill(text) {
   // 限制在竞争段落之前搜索，防止抓到竞争对手名如"来来海鲜大排档(只有一家店)"
   for (let line of safeSearchLines) {
     var m1 = line.match(/([\u4e00-\u9fa5]{2,}(?:[·\-\u00b7][\u4e00-\u9fa5]{1,})*\s*[（\(]\s*[^）\)]*?(?:店|餐厅|馆|楼|铺|厅|坊|屋|庄|阁|苑|中心)\s*[）\)])/);
-    if (m1 && !isUILabel(m1[1]) && !isOCRGarbage(m1[1])) { storeName = m1[1]; break; }
+    if (m1 && !isUILabel(m1[1]) && !isOCRGarbage(m1[1]) && !isAddressText(m1[1])) { storeName = m1[1]; break; }
   }
   // 策略A2: 匹配"XXX（任意文字）"括号模式（括号内没有特定后缀也行）
   if (!storeName) {
@@ -1354,9 +1354,9 @@ function parseAndFill(text) {
     var brandRe = /([\u4e00-\u9fa5]{2,}(?:牛肉面|烧烤|烤肉|小龙虾|螺蛳粉|火锅))/;
     for (let line of safeSearchLines) {
       var m = line.match(storeRe);
-      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1])) { storeName = m[1]; break; }
+      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1]) && !isAddressText(m[1])) { storeName = m[1]; break; }
       m = line.match(brandRe);
-      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1])) { storeName = m[1]; break; }
+      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1]) && !isAddressText(m[1])) { storeName = m[1]; break; }
     }
   }
   // 策略C: "商机详情"/"商户名称"标签后的文本行
@@ -1383,7 +1383,7 @@ function parseAndFill(text) {
       if (line.length > 40 || line.length < 4) continue;
       if (/上坐|传统|过桥|黄焖|老字号|正宗|总店|旗舰/.test(line)) {
         var cleaned = line.replace(/[@#<>《》\[\]【】\d]/g,'').trim();
-        if (cleaned.length >= 3 && !isUILabel(cleaned) && !isOCRGarbage(cleaned)) { storeName = cleaned; break; }
+        if (cleaned.length >= 3 && !isUILabel(cleaned) && !isOCRGarbage(cleaned) && !isAddressText(cleaned)) { storeName = cleaned; break; }
       }
     }
   }
@@ -1427,7 +1427,7 @@ function parseAndFill(text) {
     }
     // 5. 最终去除残留空格
     storeName = storeName.replace(/\s+/g, '');
-    if (storeName.length >= 2 && !isUILabel(storeName) && !isOCRGarbage(storeName)) {
+    if (storeName.length >= 2 && !isUILabel(storeName) && !isOCRGarbage(storeName) && !isAddressText(storeName)) {
       setField('f_store', storeName);
       // 置信度标记：提示用户核对OCR识别结果
       var storeInput = document.getElementById('f_store');
@@ -1447,6 +1447,20 @@ function parseAndFill(text) {
           hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ 置信度低，务必核对</span>';
         }
       }
+    }
+  }
+
+  // 所有策略都失败 → 标题区域不可读，提示手动填写
+  if (!storeName) {
+    var storeInput2 = document.getElementById('f_store');
+    if (storeInput2 && !storeInput2.value) {
+      var hintEl2 = document.getElementById('f_store_hint');
+      if (!hintEl2) {
+        hintEl2 = document.createElement('span');
+        hintEl2.id = 'f_store_hint';
+        storeInput2.parentNode.insertBefore(hintEl2, storeInput2.nextSibling);
+      }
+      hintEl2.innerHTML = '<span style="display:inline-block;font-size:10px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ 截图标题区域不可识别，请手动填写</span>';
     }
   }
 
