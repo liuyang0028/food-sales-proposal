@@ -1296,12 +1296,17 @@ function parseAndFill(text) {
   // 辅助：判断是否是OCR垃圾文本（中文里混了随机拉丁字母/数字/符号）
   function isOCRGarbage(s) {
     if (!s) return true;
-    // 如果包含3个以上不连续的拉丁字母片段（如 sz、3hTA、won），视为垃圾
     var latinFragments = s.match(/[a-zA-Z]{2,}/g);
     if (latinFragments && latinFragments.length >= 2) return true;
-    // 如果中文占比低于50%，视为垃圾
     var cnChars = s.match(/[\u4e00-\u9fa5]/g);
     if (!cnChars || cnChars.length / s.length < 0.5) return true;
+    return false;
+  }
+  // 辅助：判断是否是地址文本（省市区+路街号，或合作案例详情行）
+  function isAddressText(s) {
+    if (!s) return true;
+    if (/省.*市.*(区|县)/.test(s) && /(路|街|号|巷|栋|层|单元|室)/.test(s)) return true;
+    if (/合作时间|距离|门店地址|合作前|合作后|比您|案例/.test(s)) return true;
     return false;
   }
 
