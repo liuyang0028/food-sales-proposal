@@ -1356,15 +1356,31 @@ function parseAndFill(text) {
   }
   // 策略B: 匹配餐饮店名尾缀 — 只在竞争段落之前搜索，防止抓到竞争对手名
   if (!storeName) {
-    // 泛后缀（食店/菜馆/饭店等）要求前面至少3个汉字，防"太平食店"类误匹配
-    var storeRe = /([\u4e00-\u9fa5]{3,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|粥|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|烫饭|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋|烤串))/;
-    // 品牌感强的专用名放宽到前面2个汉字
-    var brandRe = /([\u4e00-\u9fa5]{2,}(?:牛肉面|烧烤|烤肉|小龙虾|螺蛳粉|火锅))/;
+    // 需要3+字前缀的后缀（这些词本身可能作为非店名出现，如"火锅"/"海鲜"单独使用）
+    var storeRe3 = /([\u4e00-\u9fa5]{3,}(?:火锅|海鲜|烧烤|串串|烤肉|烤鱼|寿司|咖啡厅|咖啡|奶茶店|奶茶|甜品店|蛋糕店|大排档|麻辣烫|冒菜|钵钵鸡|私房菜|农家乐|居酒屋|蘑菇屋))/;
+    // 明确餐饮后缀只需2+字前缀即可（如"太平食店"、"湘粤菜馆"）
+    var storeRe2 = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|酒楼|食府|餐厅|餐馆|菜馆|食店|饭店|饭馆|面馆|面店|面庄|烤鸭|披萨|茶楼|茶馆|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|小吃|美食城|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|糕点|早餐店|夜宵|宵夜|食堂|土菜馆|烧鸟|烯乌|烤串))/;
     for (let line of safeSearchLines) {
-      var m = line.match(storeRe);
+      var m = line.match(storeRe3);
       if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1]) && !isAddressText(m[1])) { storeName = m[1]; break; }
-      m = line.match(brandRe);
+      m = line.match(storeRe2);
       if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1]) && !isAddressText(m[1])) { storeName = m[1]; break; }
+    }
+  }
+  // 策略B2: 对含垃圾字符的行，尝试提取其中干净的餐饮店名片段（如"太平食店sz..."中提取"太平食店"）
+  if (!storeName) {
+    var storeReShort = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|粉店|粉馆|酒楼|食府|餐厅|餐馆|菜馆|食店|饭店|饭馆|面馆|面店|烤鸭|茶楼|茶馆|鱼庄|虾馆|炸鸡|黄焖鸡|饺子馆|馄饨|小吃|龙虾|烧鹅|卤味|食堂|土菜馆|烤串|火锅|海鲜|烧烤|串串|奶茶店|蛋糕店|大排档|麻辣烫|居酒屋))/;
+    for (let line of allSearchLines.slice(0, competitorSectionIdx)) {
+      var m = line.match(storeReShort);
+      // 只取整个匹配到的店名部分，要求长度合理（4-12字），且匹配片段后紧跟非汉字字符（说明店名到此结束）
+      if (m && m[1].length >= 4 && m[1].length <= 12 && !isUILabel(m[1]) && !isAddressText(m[1])) {
+        // 验证：匹配处前面没有更多汉字（防止截断长名字），或者该匹配后紧跟垃圾字符
+        var idx = line.indexOf(m[1]);
+        var before = idx > 0 ? line[idx-1] : '';
+        var after = line.substring(idx + m[1].length, idx + m[1].length + 2);
+        var beforeIsChinese = /[\u4e00-\u9fa5]/.test(before);
+        if (!beforeIsChinese) { storeName = m[1]; break; }
+      }
     }
   }
   // 策略C: "商机详情"/"商户名称"标签后的文本行
@@ -1395,7 +1411,20 @@ function parseAndFill(text) {
       }
     }
   }
-  // 策略E: 找包含3个以上连续汉字且不是UI标签的最长行（兜底）
+  // 策略E: 短纯中文行匹配（4-8字，全部是汉字，出现在截图上方区域）
+  // 专门解决"太平食店"这类短店名：OCR文本中间会有一行干净的"太平食店"
+  if (!storeName) {
+    // 在竞争段落之前的行中，优先找4-8个字的纯汉字行（不含数字/英文），作为短店名候选
+    var shortNameBlacklist = /更多|报价|工具|详情|名称|地址|电话|评分|商机|状态|阶段|联系|跟进|时间|距离|案例|竞争|切口|方案|成本|保底|竞得|流量|曝光|搜索|转化|签约|合作|续费|投放|充值|余额/;
+    for (let line of safeSearchLines) {
+      // 去掉空格后，检查是否是4-10个纯汉字
+      var pureHan = line.replace(/\s/g,'');
+      if (/^[\u4e00-\u9fa5]{4,10}$/.test(pureHan) && !shortNameBlacklist.test(pureHan) && !isUILabel(pureHan) && !isAddressText(pureHan)) {
+        storeName = pureHan; break;
+      }
+    }
+  }
+  // 策略F: 找包含3个以上连续汉字且不是UI标签的最长行（兜底）
   if (!storeName) {
     var bestCandidate = '';
     for (let line of mergedLines) {
@@ -1403,7 +1432,7 @@ function parseAndFill(text) {
       // 跳过纯数字、百分比行
       if (/^[\d,.%\s万亿]+$/.test(line)) continue;
       // 跳过含有流量指标关键词的行
-      if (/曝光|搜索|点击|导航|转化|电话量/.test(line)) continue;
+      if (/曝光|搜索|点击|导航|转化|电话量|成本|保底|竞得|最终|实际/.test(line)) continue;
       // 找连续中文最长的段
       var chineseRuns = line.match(/[\u4e00-\u9fa5（\(）\)]{4,}/g);
       if (chineseRuns) {
