@@ -1192,13 +1192,14 @@ function preprocessImage(imgSrc) {
   });
 }
 
-// 裁剪图片顶部标题栏区域（高度前8%，宽度左侧62%）专门用于提取商户名
+// 裁剪图片顶部标题栏区域专门用于提取商户名
 // 轩辕系统商户首页格式固定：商户名始终在顶部导航栏左侧
+// 高度取前12%（宽松容忍截图偏差），宽度取左侧62%（排除右侧按钮区）
 function cropTitleBar(imgSrc) {
   return new Promise(function(resolve) {
     const img = new Image();
     img.onload = function() {
-      const cropH = Math.round(img.height * 0.08); // 前8%高度
+      const cropH = Math.round(img.height * 0.12); // 前12%高度（容忍截图偏差）
       const cropW = Math.round(img.width  * 0.62); // 左侧62%宽度
       const scale = Math.max(3, 3000 / cropW);     // 裁剪后放大更多，提升小字识别
       const canvas = document.createElement('canvas');
@@ -1238,16 +1239,20 @@ async function runOCR(imgSrc, imgId) {
         const titleResult = await Tesseract.recognize(titleCropped, 'chi_sim+eng', {});
         const titleText = titleResult.data.text || '';
         console.log('[OCR] 标题栏识别:', titleText);
-        // 标题栏里只有一行，取第一个非空行，去掉常见UI按钮文字
+        // 标题栏文本处理：合并多行（OCR可能把一行拆成多行）、去掉右侧按钮文字
+        const UI_BTN = /更多|报价工具|解决方案|返回|报价|工具|首页|关注|收藏|编辑|分享|Po\s*ID|PID|Leads/gi;
         const titleLines = titleText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-        for (var tl of titleLines) {
-          // 去掉右侧按钮文字（更多/报价工具/解决方案/返回等）
-          var cleaned = tl.replace(/更多|报价工具|解决方案|返回|报价|工具|首页|关注|收藏|编辑|分享/g, '').trim();
-          // 必须含有中文，且长度合理
-          if (/[\u4e00-\u9fa5]{2,}/.test(cleaned) && cleaned.length >= 2 && cleaned.length <= 40) {
-            titleBarStoreName = cleaned;
+        // 合并所有行为一段，去掉按钮词，再按中文连续段提取
+        const merged = titleLines.join('').replace(UI_BTN, ' ').replace(/\s+/g, ' ').trim();
+        // 提取第一段连续中文+括号内容（店名可能含括号如"xx店(天津之眼店)"）
+        var nameMatch = merged.match(/([\u4e00-\u9fa5·\-\/（\(][^\x00-\x40]{2,60}?)(?:\s|$)/);
+        if (nameMatch) {
+          var candidate = nameMatch[1].replace(UI_BTN, '').trim();
+          // 去掉末尾残留的非中文字符（如OCR误识别的数字/字母）
+          candidate = candidate.replace(/[\x00-\x40]+$/, '').trim();
+          if (/[\u4e00-\u9fa5]{2,}/.test(candidate) && candidate.length >= 2) {
+            titleBarStoreName = candidate;
             console.log('[OCR] 标题栏提取商户名:', titleBarStoreName);
-            break;
           }
         }
       }
