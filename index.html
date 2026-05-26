@@ -1192,31 +1192,34 @@ function preprocessImage(imgSrc) {
   });
 }
 
-// 裁剪图片顶部标题栏区域专门用于提取商户名
-// 轩辕系统商户首页格式固定：商户名始终在顶部导航栏左侧
-// 高度取前12%（宽松容忍截图偏差），宽度取左侧62%（排除右侧按钮区）
+// 裁剪图片中商户名所在区域，专门用于提取商户名
+// 覆盖所有轩辕系统样式：
+//   有左侧导航列表（宽屏）：商户名在垂直13%-27%、水平17%-73%
+//   无左侧导航列表（窄屏/裁剪版）：商户名在垂直5%-22%、水平3%-68%
+// 统一取 垂直4%-32%、水平2%-82% 覆盖所有情况，排除页面下方大量干扰内容
 function cropTitleBar(imgSrc) {
   return new Promise(function(resolve) {
     const img = new Image();
     img.onload = function() {
-      const cropH = Math.round(img.height * 0.12); // 前12%高度（容忍截图偏差）
-      const cropW = Math.round(img.width  * 0.62); // 左侧62%宽度
-      const scale = Math.max(3, 3000 / cropW);     // 裁剪后放大更多，提升小字识别
+      const top  = Math.round(img.height * 0.04);
+      const h    = Math.round(img.height * 0.30); // 垂直4%-34%
+      const left = Math.round(img.width  * 0.02);
+      const w    = Math.round(img.width  * 0.80); // 水平2%-82%
+      const scale = Math.max(2, 2400 / w);
       const canvas = document.createElement('canvas');
-      canvas.width  = cropW * scale;
-      canvas.height = cropH * scale;
+      canvas.width  = w * scale;
+      canvas.height = h * scale;
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      // 只绘制左上角裁剪区域
-      ctx.drawImage(img, 0, 0, cropW, cropH, 0, 0, canvas.width, canvas.height);
-      // 强对比度增强（标题栏背景简单，可以更激进）
+      ctx.drawImage(img, left, top, w, h, 0, 0, canvas.width, canvas.height);
+      // 对比度增强
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
       for (let i = 0; i < data.length; i += 4) {
-        data[i]   = Math.min(255, Math.max(0, ((data[i]   - 128) * 1.5) + 128));
-        data[i+1] = Math.min(255, Math.max(0, ((data[i+1] - 128) * 1.5) + 128));
-        data[i+2] = Math.min(255, Math.max(0, ((data[i+2] - 128) * 1.5) + 128));
+        data[i]   = Math.min(255, Math.max(0, ((data[i]   - 128) * 1.4) + 128));
+        data[i+1] = Math.min(255, Math.max(0, ((data[i+1] - 128) * 1.4) + 128));
+        data[i+2] = Math.min(255, Math.max(0, ((data[i+2] - 128) * 1.4) + 128));
       }
       ctx.putImageData(imageData, 0, 0);
       resolve(canvas.toDataURL('image/png'));
@@ -1239,20 +1242,34 @@ async function runOCR(imgSrc, imgId) {
         const titleResult = await Tesseract.recognize(titleCropped, 'chi_sim+eng', {});
         const titleText = titleResult.data.text || '';
         console.log('[OCR] 标题栏识别:', titleText);
-        // 标题栏文本处理：合并多行（OCR可能把一行拆成多行）、去掉右侧按钮文字
-        const UI_BTN = /更多|报价工具|解决方案|返回|报价|工具|首页|关注|收藏|编辑|分享|Po\s*ID|PID|Leads/gi;
-        const titleLines = titleText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-        // 合并所有行为一段，去掉按钮词，再按中文连续段提取
-        const merged = titleLines.join('').replace(UI_BTN, ' ').replace(/\s+/g, ' ').trim();
-        // 提取第一段连续中文+括号内容（店名可能含括号如"xx店(天津之眼店)"）
-        var nameMatch = merged.match(/([\u4e00-\u9fa5·\-\/（\(][^\x00-\x40]{2,60}?)(?:\s|$)/);
-        if (nameMatch) {
-          var candidate = nameMatch[1].replace(UI_BTN, '').trim();
-          // 去掉末尾残留的非中文字符（如OCR误识别的数字/字母）
-          candidate = candidate.replace(/[\x00-\x40]+$/, '').trim();
+        // 从裁剪区域的多行文本中提取商户名
+        // 裁剪区域包含：商户名行、Poi ID行、商户PID行、Leads ID行、地址行等
+        // 商户名特征：纯/主体中文、不含ID/数字串、不是地址
+        const TITLE_BLACKLIST = /Poi|PID|Leads|ID|poi|leads|更多|报价工具|解决方案|返回|报价|工具|首页|关注|收藏|编辑|分享|省|市|区|县|路|街|号|合作时间|距离|门店地址|商机|当前|历史|建联|意向|签约|沉默|流失/;
+        const titleLines = titleText.split('\n').map(function(l) {
+          // 合并行内中文字间空格
+          return l.trim().replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
+                         .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
+        }).filter(Boolean);
+        for (var tl of titleLines) {
+          // 跳过含ID/地址/按钮关键词的行
+          if (TITLE_BLACKLIST.test(tl)) continue;
+          // 跳过以数字/字母开头的行（Poi ID等）
+          if (/^[A-Za-z0-9]/.test(tl)) continue;
+          // 跳过中文字符少于2个的行
+          var cnCount = (tl.match(/[\u4e00-\u9fa5]/g) || []).length;
+          if (cnCount < 2) continue;
+          // 跳过过长的行（地址或描述性文本）
+          if (tl.length > 30) continue;
+          // 跳过纯数字/百分比行
+          if (/^[\d\s,，.。%]+$/.test(tl)) continue;
+          // 找到！去掉右侧残留按钮词
+          var candidate = tl.replace(/更多|报价工具|解决方案|返回|报价|工具/g, '').trim();
+          candidate = candidate.replace(/[\x00-\x40\uff01-\uff60]+$/, '').trim();
           if (/[\u4e00-\u9fa5]{2,}/.test(candidate) && candidate.length >= 2) {
             titleBarStoreName = candidate;
             console.log('[OCR] 标题栏提取商户名:', titleBarStoreName);
+            break;
           }
         }
       }
