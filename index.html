@@ -1355,32 +1355,39 @@ function parseAndFill(text) {
     }
   }
   // 策略B: 匹配餐饮店名尾缀 — 只在竞争段落之前搜索，防止抓到竞争对手名
+  // 匹配规则：店名必须在行的靠前位置（前面汉字不超过2个），防止贪婪匹配到行业介绍长文本中的"...制约烧烤"等
   if (!storeName) {
-    // 需要3+字前缀的后缀（这些词本身可能作为非店名出现，如"火锅"/"海鲜"单独使用）
-    var storeRe3 = /([\u4e00-\u9fa5]{3,}(?:火锅|海鲜|烧烤|串串|烤肉|烤鱼|寿司|咖啡厅|咖啡|奶茶店|奶茶|甜品店|蛋糕店|大排档|麻辣烫|冒菜|钵钵鸡|私房菜|农家乐|居酒屋|蘑菇屋))/;
-    // 明确餐饮后缀只需2+字前缀即可（如"太平食店"、"湘粤菜馆"）
-    var storeRe2 = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|酒楼|食府|餐厅|餐馆|菜馆|食店|饭店|饭馆|面馆|面店|面庄|烤鸭|披萨|茶楼|茶馆|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|小吃|美食城|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|糕点|早餐店|夜宵|宵夜|食堂|土菜馆|烧鸟|烯乌|烤串))/;
+    // 所有餐饮后缀，统一允许2+字前缀
+    var storeReAll = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|海南粉|螺蛳粉|酸辣粉|桂林粉|牛肉粉|羊肉粉|肠粉|河粉|粉店|粉馆|火锅|海鲜|烧烤|菜馆|食店|饭店|饭馆|酒楼|食府|餐厅|餐馆|面馆|面店|面庄|串串|烤肉|烤鱼|烤鸭|寿司|披萨|咖啡厅|咖啡|茶楼|茶馆|奶茶店|奶茶|甜品店|蛋糕店|鱼庄|虾馆|鸡排|炸鸡|黄焖鸡|汉堡|拉面|牛肉面|饺子馆|饺子|包子铺|包子|馄饨|小吃|美食城|大排档|龙虾|烧鹅|卤味|卤鹅|卤鸭|煲仔饭|盖浇饭|炒饭|麻辣烫|冒菜|钵钵鸡|凉皮|肉夹馍|生煎|锅贴|砂锅|干锅|焖锅|铁板|糕点|早餐店|夜宵|宵夜|食堂|私房菜|农家乐|土菜馆|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋|烤串))/;
     for (let line of safeSearchLines) {
-      var m = line.match(storeRe3);
-      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1]) && !isAddressText(m[1])) { storeName = m[1]; break; }
-      m = line.match(storeRe2);
-      if (m && m[1].length >= 4 && !isUILabel(m[1]) && !isOCRGarbage(m[1]) && !isAddressText(m[1])) { storeName = m[1]; break; }
+      // 行必须是相对"干净"的行（不含垃圾字符），垃圾行交给策略B2处理
+      if (isOCRGarbage(line)) continue;
+      var m = line.match(storeReAll);
+      if (!m) continue;
+      var candidate = m[1];
+      // 候选长度合理（4-12字）
+      if (candidate.length < 4 || candidate.length > 12) continue;
+      // 候选在行内的起始位置：前面出现的汉字字符数不超过2个（防止匹配到"...制约烧烤"）
+      var matchStart = line.indexOf(candidate);
+      var charsBeforeMatch = (line.substring(0, matchStart).match(/[\u4e00-\u9fa5]/g) || []).length;
+      if (charsBeforeMatch > 2) continue;
+      if (!isUILabel(candidate) && !isAddressText(candidate)) { storeName = candidate; break; }
     }
   }
-  // 策略B2: 对含垃圾字符的行，尝试提取其中干净的餐饮店名片段（如"太平食店sz..."中提取"太平食店"）
+  // 策略B2: 对含垃圾字符的行，尝试提取行首的干净餐饮店名片段（如"渔村烧烤更9…fI..."、"太平食店sz..."）
   if (!storeName) {
     var storeReShort = /([\u4e00-\u9fa5]{2,}(?:米线|米粉|粉店|粉馆|酒楼|食府|餐厅|餐馆|菜馆|食店|饭店|饭馆|面馆|面店|烤鸭|茶楼|茶馆|鱼庄|虾馆|炸鸡|黄焖鸡|饺子馆|馄饨|小吃|龙虾|烧鹅|卤味|食堂|土菜馆|烤串|火锅|海鲜|烧烤|串串|奶茶店|蛋糕店|大排档|麻辣烫|居酒屋))/;
     for (let line of allSearchLines.slice(0, competitorSectionIdx)) {
       var m = line.match(storeReShort);
-      // 只取整个匹配到的店名部分，要求长度合理（4-12字），且匹配片段后紧跟非汉字字符（说明店名到此结束）
-      if (m && m[1].length >= 4 && m[1].length <= 12 && !isUILabel(m[1]) && !isAddressText(m[1])) {
-        // 验证：匹配处前面没有更多汉字（防止截断长名字），或者该匹配后紧跟垃圾字符
-        var idx = line.indexOf(m[1]);
-        var before = idx > 0 ? line[idx-1] : '';
-        var after = line.substring(idx + m[1].length, idx + m[1].length + 2);
-        var beforeIsChinese = /[\u4e00-\u9fa5]/.test(before);
-        if (!beforeIsChinese) { storeName = m[1]; break; }
-      }
+      if (!m) continue;
+      var candidate = m[1];
+      if (candidate.length < 4 || candidate.length > 12) continue;
+      if (isUILabel(candidate) || isAddressText(candidate)) continue;
+      // 候选必须在行首位置（前面出现的汉字字符数不超过2个）
+      var matchStart = line.indexOf(candidate);
+      var charsBeforeMatch = (line.substring(0, matchStart).match(/[\u4e00-\u9fa5]/g) || []).length;
+      if (charsBeforeMatch > 2) continue;
+      storeName = candidate; break;
     }
   }
   // 策略C: "商机详情"/"商户名称"标签后的文本行
