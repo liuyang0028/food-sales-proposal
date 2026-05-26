@@ -1427,36 +1427,55 @@ function parseAndFill(text, titleBarStoreName) {
   }
   var safeSearchLines = allSearchLines.slice(0, competitorSectionIdx);
   // 策略A-nav：利用轩辕系统固定布局特征提取商户名
-  // 特征1：商户名与"更多"在同一行（如"阿鑫麻辣冷吃(总店) 更多 报价工具 解决方案"）
-  // 特征2：商户名单独一行，下一行含"更多"或"报价工具"
-  // 特征3：商户名与Poi ID在相邻行（Poi ID固定格式为字母+数字）
+  // 特征1（最强）：商户名后跟"展开"按钮，格式"店名 只 v 展开"或"店名 展开"
+  //   → 取"展开"之前的中文内容（轩辕商机列表每条商机的固定UI）
+  // 特征2：商户名行含"更多"，取"更多"之前内容（需长度合理，防截断误取）
   if (!storeName) {
     for (var _ni = 0; _ni < safeSearchLines.length; _ni++) {
       var _line = safeSearchLines[_ni];
-      var _next = safeSearchLines[_ni + 1] || '';
-      var _next2 = safeSearchLines[_ni + 2] || '';
-      // 特征1：本行含"更多"，提取"更多"之前的中文部分
-      if (/更多/.test(_line)) {
-        var _before = _line.split(/更多/)[0].trim();
-        // 合并中文字间空格
-        _before = _before.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
-                         .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
-        // 去掉非中文前缀（如箭头、图标符号等）
+      // 特征1：含"展开"，取其之前的中文部分
+      if (/展开/.test(_line)) {
+        var _beforeExpand = _line.split(/展开/)[0]
+          .replace(/只\s*v?\s*$/, '').replace(/[<>↑↓▼▲\s]+$/, '').trim();
+        _beforeExpand = _beforeExpand.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5（\(])/g, '$1$2')
+                                     .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5（\(])/g, '$1$2');
+        _beforeExpand = _beforeExpand.replace(/^[^\u4e00-\u9fa5（\(]+/, '').trim();
+        var _cnExpand = (_beforeExpand.match(/[\u4e00-\u9fa5]/g) || []).length;
+        if (_cnExpand >= 2 && _beforeExpand.length >= 2 && _beforeExpand.length <= 30 &&
+            !isUILabel(_beforeExpand) && !isAddressText(_beforeExpand)) {
+          storeName = _beforeExpand;
+          console.log('[parseAndFill] 策略A-nav(展开前) 命中:', storeName);
+          break;
+        }
+      }
+    }
+  }
+  if (!storeName) {
+    for (var _ni2 = 0; _ni2 < safeSearchLines.length; _ni2++) {
+      var _line2 = safeSearchLines[_ni2];
+      var _next2line = safeSearchLines[_ni2 + 1] || '';
+      // 特征2：含"更多"，取其之前内容，且要求长度≥4个汉字（防截断的残缺名字）
+      if (/更多/.test(_line2)) {
+        var _before = _line2.split(/更多/)[0].trim();
+        _before = _before.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5（\(])/g, '$1$2')
+                         .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5（\(])/g, '$1$2');
         _before = _before.replace(/^[^\u4e00-\u9fa5（\(]+/, '').trim();
-        if (_before.length >= 2 && /[\u4e00-\u9fa5]{2,}/.test(_before) &&
+        var _cnBefore = (_before.match(/[\u4e00-\u9fa5]/g) || []).length;
+        // 要求≥4个汉字才采信（截断的残缺名如"冷吃"只有2字，排除）
+        if (_cnBefore >= 4 && _before.length >= 4 && _before.length <= 30 &&
             !isUILabel(_before) && !isOCRGarbage(_before) && !isAddressText(_before)) {
           storeName = _before;
           console.log('[parseAndFill] 策略A-nav(更多同行) 命中:', storeName);
           break;
         }
       }
-      // 特征2：下一行或下两行含"更多"/"报价工具"，本行是店名
-      if (/更多|报价工具/.test(_next) || /更多|报价工具/.test(_next2)) {
-        var _cn = (_line.match(/[\u4e00-\u9fa5]/g) || []).length;
-        if (_cn >= 2 && _line.length >= 2 && _line.length <= 30 &&
-            !isUILabel(_line) && !isOCRGarbage(_line) && !isAddressText(_line) &&
-            !/^[A-Za-z0-9]/.test(_line)) {
-          storeName = _line;
+      // 特征3：下一行含"更多"/"报价工具"，本行是独立店名行
+      if (/更多|报价工具/.test(_next2line)) {
+        var _cn3 = (_line2.match(/[\u4e00-\u9fa5]/g) || []).length;
+        if (_cn3 >= 2 && _line2.length >= 2 && _line2.length <= 30 &&
+            !isUILabel(_line2) && !isOCRGarbage(_line2) && !isAddressText(_line2) &&
+            !/^[A-Za-z0-9]/.test(_line2)) {
+          storeName = _line2;
           console.log('[parseAndFill] 策略A-nav(更多下行) 命中:', storeName);
           break;
         }
