@@ -1193,18 +1193,18 @@ function preprocessImage(imgSrc) {
 }
 
 // 裁剪图片中商户名所在区域，专门用于提取商户名
-// 覆盖所有轩辕系统样式：
-//   有左侧导航列表（宽屏）：商户名在垂直13%-27%、水平17%-73%
-//   无左侧导航列表（窄屏/裁剪版）：商户名在垂直5%-22%、水平3%-68%
-// 统一取 垂直4%-32%、水平2%-82% 覆盖所有情况，排除页面下方大量干扰内容
+// 覆盖所有轩辕系统样式（含/不含浏览器UI的截图）：
+//   全屏截图（含浏览器地址栏）：商户名在垂直18%-30%
+//   仅截网页内容（无浏览器UI）：商户名在垂直8%-25%
+// 取垂直10%-38%、水平2%-82%，覆盖所有情况
 function cropTitleBar(imgSrc) {
   return new Promise(function(resolve) {
     const img = new Image();
     img.onload = function() {
-      const top  = Math.round(img.height * 0.04);
-      const h    = Math.round(img.height * 0.30); // 垂直4%-34%
+      const top  = Math.round(img.height * 0.10); // 跳过浏览器标签栏/地址栏
+      const h    = Math.round(img.height * 0.28); // 10%-38%
       const left = Math.round(img.width  * 0.02);
-      const w    = Math.round(img.width  * 0.80); // 水平2%-82%
+      const w    = Math.round(img.width  * 0.80);
       const scale = Math.max(2, 2400 / w);
       const canvas = document.createElement('canvas');
       canvas.width  = w * scale;
@@ -1252,6 +1252,8 @@ async function runOCR(imgSrc, imgId) {
                          .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
         }).filter(Boolean);
         for (var tl of titleLines) {
+          // 跳过URL（含http/amap/spm等）
+          if (/https?:|amap\.com|spm=|\.html|telemarketing|workspace/.test(tl)) continue;
           // 跳过含ID/地址/按钮关键词的行
           if (TITLE_BLACKLIST.test(tl)) continue;
           // 跳过以数字/字母开头的行（Poi ID等）
