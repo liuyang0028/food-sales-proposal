@@ -679,59 +679,17 @@ body {
 <div class="main-container">
   <!-- ========== Left Panel ========== -->
   <div class="left-panel">
-    <!-- Screenshot Drop -->
-    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
-      <div class="hint" id="dropHint">
-        <b style="font-size:13px;">粘贴 / 拖入截图</b>
-        <div class="dze-row">
-          <div class="dze-item">
-            <img src="screenshot-example-1.png" alt="商机详情" onclick="event.stopPropagation();showImgPreview(this.src,'商机详情截图示例')" title="点击放大">
-            <span>① 商机详情</span>
-          </div>
-          <div class="dze-plus">+</div>
-          <div class="dze-item">
-            <img src="screenshot-example-2.png" alt="线上流量" onclick="event.stopPropagation();showImgPreview(this.src,'线上流量截图示例')" title="点击放大">
-            <span>② 线上流量</span>
-          </div>
-        </div>
-        <span style="font-size:11px;color:#94a3b8;">Ctrl+V 粘贴 · 拖拽 · 点击上传</span>
-      </div>
-      <div class="preview-imgs" id="previewImgs"></div>
-      <button class="clear-imgs" id="clearImgsBtn" onclick="event.stopPropagation();clearImages()">清除</button>
-    </div>
-    <div class="ocr-status" id="ocrStatus">
-      <div class="spinner" id="ocrSpinner"></div>
-      <span id="ocrText">正在识别截图内容...</span>
-      <button id="ocrDebugBtn" style="margin-left:auto;background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;display:none;" onclick="toggleOcrDebug()">查看原文</button>
-    </div>
-    <div id="ocrDebugBox" style="display:none;margin-top:4px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="font-size:10px;color:#64748b;">OCR识别原文（可编辑后点击重新解析）</span>
-        <button id="reparseBtn" onclick="reparseFromDebug()" style="background:#10b981;border:none;color:#fff;font-size:10px;padding:2px 10px;border-radius:4px;cursor:pointer;">重新解析</button>
-      </div>
-      <textarea id="ocrDebugText" style="width:100%;min-height:100px;max-height:200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#334155;line-height:1.6;padding:8px 10px;resize:vertical;font-family:monospace;box-sizing:border-box;"></textarea>
-    </div>
 
-    <!-- Quick Info -->
-    <!-- OCR校验提示横幅 -->
-    <div id="ocrCheckBanner" style="display:none;margin-bottom:12px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px solid #f59e0b;border-radius:10px;padding:12px 16px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:18px;">⚠️</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:#92400e;">OCR自动识别完成，请逐项核对并校正</div>
-          <div style="font-size:11px;color:#a16207;margin-top:2px;">高亮字段为自动填充，可能有误 — 点击字段直接修改，品类/城市/名称务必确认</div>
-        </div>
-        <button onclick="this.parentElement.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;padding:4px;">✕</button>
-      </div>
-    </div>
-
+    <!-- ① 商户信息手填区（置顶） -->
     <div class="form-section">
-      <div class="form-section-title"><span style="font-size:14px;">📋</span> 商户信息（系统读取截图，需核验校正）</div>
+      <div class="form-section-title"><span style="font-size:14px;">📋</span> 商户信息</div>
+      <div style="font-size:11px;color:#64748b;margin:-6px 0 10px;padding:6px 10px;background:#f0f9ff;border-radius:6px;border-left:3px solid #38bdf8;">
+        请先填写以下商户基本信息，填完后上传截图读取流量数据，再点击生成方案
+      </div>
       <div class="form-grid">
         <div class="form-group full">
           <label>商户名称 <span class="req">*</span></label>
-          <input type="text" id="f_store" placeholder="从商机详情截图获取">
+          <input type="text" id="f_store" placeholder="如：阿鑫麻辣冷吃(总店)">
         </div>
         <div class="form-group">
           <label>城市 <span class="req">*</span></label>
@@ -739,17 +697,27 @@ body {
         </div>
         <div class="form-group">
           <label>品类 <span class="req">*</span></label>
-          <input type="text" id="f_category" list="category_list" placeholder="OCR自动识别，可手动修改">
+          <input type="text" id="f_category" list="category_list" placeholder="如：火锅" oninput="onCategoryInput(this.value)" onchange="onCategoryInput(this.value)">
           <datalist id="category_list">
             <option value="米线">
             <option value="火锅">
             <option value="海鲜">
             <option value="烧烤">
+            <option value="小龙虾">
+            <option value="水产海鲜">
             <option value="日料">
             <option value="川菜">
+            <option value="湘菜">
             <option value="云南菜">
             <option value="西餐">
             <option value="烘焙">
+            <option value="快餐">
+            <option value="串串">
+            <option value="炸鸡">
+            <option value="奶茶">
+            <option value="甜品">
+            <option value="粤菜">
+            <option value="东北菜">
             <option value="美食">
           </datalist>
         </div>
@@ -762,25 +730,28 @@ body {
             <option value="断约">断约(已过期)</option>
             <option value="升档">已合作升档</option>
           </select>
-          <div class="field-tip">决定使用哪套话术逻辑，OCR无法识别，必须手动选择</div>
         </div>
         <div class="form-group">
-          <label>售卖目标 <span class="unit">（可多选，系统自动推荐）</span></label>
+          <label>售卖目标 <span class="unit">（可多选）</span></label>
           <div class="checkbox-group" id="f_targets">
             <div class="checkbox-item checked" data-val="推广通" onclick="toggleCheck(this)">推广通</div>
             <div class="checkbox-item" data-val="品牌顶展" onclick="toggleCheck(this)">品牌顶展</div>
           </div>
           <div style="font-size:10px;color:#64748b;margin-top:4px;padding:3px 8px;background:#f0fdf4;border-radius:4px;border-left:2px solid #10b981;">
-            商户通为<b style="color:#16a34a;">免费权益</b>（价值2000-4000元/年），高德烟火活动期间免费开通，可作为谈判抓手但无需售卖
+            商户通为<b style="color:#16a34a;">免费权益</b>（价值2000-4000元/年），可作为谈判抓手
           </div>
           <div id="targetRecommend" style="font-size:11px;color:#16a34a;margin-top:4px;display:none;"></div>
+        </div>
+        <div class="form-group full">
+          <label>客户特殊情况 <span class="unit">（影响话术重点）</span></label>
+          <textarea id="f_customer_note" rows="2" placeholder="如：高德状元榜商户、曾合作过断约、老板比较强硬、有美团合作、连锁品牌等" style="width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;color:#1e293b;font-size:12px;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
         </div>
       </div>
     </div>
 
-    <!-- 商圈与价格（自动提取） -->
+    <!-- ② 商圈与价格 -->
     <div class="form-section">
-      <div class="form-section-title"><span style="font-size:14px;">🏪</span> 商圈与价格（自动提取）</div>
+      <div class="form-section-title"><span style="font-size:14px;">🏪</span> 商圈与价格</div>
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
         <div class="form-group">
           <label>所属商圈</label>
@@ -789,20 +760,52 @@ body {
         <div class="form-group">
           <label>本店人均 <span class="unit">(元)</span></label>
           <input type="number" id="f_price_self" placeholder="如：88">
-          <div class="field-tip">用于话术算账：每周多10桌=每月多X元</div>
+          <div class="field-tip" id="f_price_self_tip">选择品类后自动填入参考值，可修改</div>
         </div>
         <div class="form-group">
           <label>同城人均 <span class="unit">(元)</span></label>
           <input type="number" id="f_price_city" placeholder="如：49">
-          <div class="field-tip">用于价格优劣势描述，可从截图获取</div>
+          <div class="field-tip">用于价格优劣势描述</div>
         </div>
       </div>
     </div>
 
-    <!-- Data from screenshot - traffic table -->
+    <!-- ③ 截图上传 + 流量数据（仅用于流量数据读取） -->
     <div class="form-section">
-      <div class="form-section-title"><span style="font-size:14px;">📊</span> 线上流量数据</div>
-      <div id="traffic_table_area" class="traffic-table-area">
+      <div class="form-section-title"><span style="font-size:14px;">📊</span> 线上流量数据（截图读取）</div>
+      <div style="font-size:11px;color:#64748b;margin:-6px 0 10px;padding:5px 10px;background:#f8fafc;border-radius:6px;border-left:3px solid #94a3b8;">
+        上传线上流量截图，自动提取搜索/点击/导航/电话等数据
+      </div>
+      <!-- Screenshot Drop -->
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
+        <div class="hint" id="dropHint">
+          <b style="font-size:13px;">粘贴 / 拖入截图</b>
+          <div class="dze-row">
+            <div class="dze-item">
+              <img src="screenshot-example-2.png" alt="线上流量" onclick="event.stopPropagation();showImgPreview(this.src,'线上流量截图示例')" title="点击放大">
+              <span>线上流量截图</span>
+            </div>
+          </div>
+          <span style="font-size:11px;color:#94a3b8;">Ctrl+V 粘贴 · 拖拽 · 点击上传</span>
+        </div>
+        <div class="preview-imgs" id="previewImgs"></div>
+        <button class="clear-imgs" id="clearImgsBtn" onclick="event.stopPropagation();clearImages()">清除</button>
+      </div>
+      <div class="ocr-status" id="ocrStatus">
+        <div class="spinner" id="ocrSpinner"></div>
+        <span id="ocrText">正在识别截图内容...</span>
+        <button id="ocrDebugBtn" style="margin-left:auto;background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;display:none;" onclick="toggleOcrDebug()">查看原文</button>
+      </div>
+      <div id="ocrDebugBox" style="display:none;margin-top:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:10px;color:#64748b;">OCR识别原文（可编辑后点击重新解析）</span>
+          <button id="reparseBtn" onclick="reparseFromDebug()" style="background:#10b981;border:none;color:#fff;font-size:10px;padding:2px 10px;border-radius:4px;cursor:pointer;">重新解析</button>
+        </div>
+        <textarea id="ocrDebugText" style="width:100%;min-height:100px;max-height:200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#334155;line-height:1.6;padding:8px 10px;resize:vertical;font-family:monospace;box-sizing:border-box;"></textarea>
+      </div>
+      <!-- 流量数据表格 -->
+      <div id="traffic_table_area" class="traffic-table-area" style="margin-top:10px;">
         <div class="traffic-table-placeholder" id="traffic_placeholder">
           <span style="font-size:20px;opacity:0.5;">📊</span>
           <p>上方粘贴流量截图后自动提取数据</p>
@@ -813,18 +816,6 @@ body {
           </thead>
           <tbody id="traffic_tbody"></tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- BD补充客户情况 -->
-    <div class="form-section">
-      <div class="form-section-title"><span style="font-size:14px;">📝</span> 客户补充信息（BD填写）</div>
-      <div class="form-grid">
-        <div class="form-group full">
-          <label>客户特殊情况</label>
-          <textarea id="f_customer_note" rows="2" placeholder="如：高德状元榜商户、连锁品牌、本地口碑TOP、曾合作过推广通但断约等" style="width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;color:#1e293b;font-size:12px;resize:vertical;outline:none;"></textarea>
-          <div class="field-tip">影响话术侧重点，如曾被坑/老板强硬/有美团合作等</div>
-        </div>
       </div>
     </div>
 
@@ -1341,7 +1332,8 @@ async function runOCR(imgSrc, imgId) {
 
 // 清空OCR自动填充过的字段（重新解析前）
 function clearOcrFields() {
-  ['f_store','f_city','f_district','f_price_self','f_price_city'].forEach(function(id) {
+  // 只清除价格/商圈等OCR填充字段，不清除用户手填的商户名/城市/品类/状态
+  ['f_district','f_price_self','f_price_city'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el && el.dataset.ocrFilled) {
       el.value = '';
@@ -1349,10 +1341,6 @@ function clearOcrFields() {
       el.classList.remove('ocr-filled-persistent');
     }
   });
-  var catEl = document.getElementById('f_category');
-  if (catEl && catEl.dataset.ocrFilled) { catEl.value = ''; delete catEl.dataset.ocrFilled; catEl.classList.remove('ocr-filled-persistent'); }
-  var statusEl = document.getElementById('f_status');
-  if (statusEl && statusEl.dataset.ocrFilled) { statusEl.value = ''; delete statusEl.dataset.ocrFilled; statusEl.classList.remove('ocr-filled-persistent'); }
   var banner = document.getElementById('ocrCheckBanner');
   if (banner) banner.style.display = 'none';
   var hintEl = document.getElementById('f_store_hint');
@@ -1615,129 +1603,21 @@ function parseAndFill(text, titleBarStoreName) {
     // 5. 最终去除残留空格
     storeName = storeName.replace(/\s+/g, '');
     if (storeName.length >= 2 && !isUILabel(storeName) && !isOCRGarbage(storeName) && !isAddressText(storeName)) {
-      setField('f_store', storeName);
-      // 置信度标记：提示用户核对OCR识别结果
-      var storeInput = document.getElementById('f_store');
-      if (storeInput) {
-        var hintEl = document.getElementById('f_store_hint');
-        if (!hintEl) {
-          hintEl = document.createElement('span');
-          hintEl.id = 'f_store_hint';
-          storeInput.parentNode.insertBefore(hintEl, storeInput.nextSibling);
-        }
-        // 置信度：有括号(策略A)→高，有后缀(策略B)→中，其他→低
-        if (bracketMatch) {
-          hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;padding:1px 6px;border-radius:4px;margin-left:4px;">OCR识别 ✓</span>';
-        } else if (/米线|米粉|海南粉|螺蛳粉|火锅|海鲜|烧烤|菜馆|饭店|酒楼|餐厅|面馆|串串|烤肉|烤鱼|寿司|咖啡|茶楼|奶茶|蛋糕|鱼庄|鸡排|黄焖鸡|汉堡|拉面|饺子|大排档|烧鸟|烯乌|居酒屋|蘑菇屋|蘑关屋/.test(storeName)) {
-          hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#d97706;background:#fffbeb;border:1px solid #fde68a;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ OCR识别，请核对</span>';
-        } else {
-          hintEl.innerHTML = '<span style="display:inline-block;font-size:10px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ 置信度低，务必核对</span>';
-        }
-      }
+      // 商户名不再自动填入，用户手动输入
+      // setField('f_store', storeName);
     }
   }
 
-  // 所有策略都失败 → 标题区域不可读，提示手动填写
-  if (!storeName) {
-    var storeInput2 = document.getElementById('f_store');
-    if (storeInput2 && !storeInput2.value) {
-      var hintEl2 = document.getElementById('f_store_hint');
-      if (!hintEl2) {
-        hintEl2 = document.createElement('span');
-        hintEl2.id = 'f_store_hint';
-        storeInput2.parentNode.insertBefore(hintEl2, storeInput2.nextSibling);
-      }
-      hintEl2.innerHTML = '<span style="display:inline-block;font-size:10px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:1px 6px;border-radius:4px;margin-left:4px;">⚠️ 截图标题区域不可识别，请手动填写</span>';
-    }
-  }
+  // 所有策略都失败 → 不再提示，商户名由用户手动填写
 
-  // === 2. 解析城市 ===
-  const cityPatterns = [
-    /(?:云南|四川|贵州|广东|广西|浙江|江苏|福建|湖南|湖北|山东|河南|河北|安徽|江西|陕西|甘肃|海南|辽宁|吉林|黑龙江|内蒙古|新疆|西藏|青海|宁夏|山西|重庆|北京|上海|天津)(?:省|市|自治区)?\s*([\u4e00-\u9fa5]{2,4})(?:市|区)/,
-    /(昆明|成都|重庆|贵阳|广州|深圳|珠海|北海|日照|丽江|大理|张家界|三亚|厦门|杭州|南京|苏州|武汉|长沙|西安|郑州|济南|青岛|大连|沈阳|哈尔滨|长春|福州|南宁|海口|合肥|南昌|太原|兰州|银川|西宁|呼和浩特|乌鲁木齐|拉萨|佛山|东莞|中山|惠州|烟台|潍坊|临沂|徐州|常州|无锡|温州|金华|嘉兴|绍兴|泉州|漳州|南通|扬州|镇江|盐城|连云港|淮安|宿迁|泰州|保山|曲靖|玉溪|楚雄|红河|文山|普洱|临沧|德宏|怒江|迪庆|昭通)/
-  ];
-  for (let pat of cityPatterns) {
-    const m = fullText.match(pat);
-    if (m) {
-      const city = (m[1] || m[0]).replace(/[市省区]/g, '');
-      setField('f_city', city);
-      break;
-    }
-  }
+  // === 2. 城市 — 不再自动填入，用户手动输入 ===
+  // （保留城市解析代码供将来使用）
 
-  // === 3. 流量数据不再OCR解析，直接展示截图图片 ===
+  // === 3. 流量数据由 parseTrafficData 处理，此处略过 ===
 
-  // === 4. 自动推断品类 ===
-  if (!document.getElementById('f_category').value) {
-    // 优先仅用店名推断品类（避免全文中竞争对手名如"海鲜大排档"干扰）
-    var nameOnly = storeName || '';
-    var catMap = [
-      [/过桥|米线|米粉/, '米线'],
-      [/火锅|串串|涮/, '火锅'],
-      [/烧烤|烤肉|烤串|撸串/, '烧烤'],
-      [/烧鸟|居酒屋|寿司|日料|日式|刺身|烯乌|烧乌/, '日料'],
-      [/海鲜|鱼庄|虾馆|蟹|龙虾/, '海鲜'],
-      [/川菜|麻辣/, '川菜'],
-      [/云南菜|滇菜|傣味/, '云南菜'],
-      [/西餐|牛排|意面|汉堡|披萨/, '西餐'],
-      [/咖啡|奶茶|蛋糕|甜品|面包|烘焙|茶饮/, '烘焙'],
-      [/小吃|面馆|粉店|拉面|牛肉面|饺子|包子|馄饨/, '米线'],
-    ];
-    var catFound = false;
-    // 第一轮：只用店名
-    for (var ci = 0; ci < catMap.length; ci++) {
-      if (catMap[ci][0].test(nameOnly)) {
-        var catEl = document.getElementById('f_category');
-        catEl.value = catMap[ci][1];
-        catEl.dataset.ocrFilled = '1';
-        markFilled('f_category');
-        filled++;
-        catFound = true;
-        break;
-      }
-    }
-    // 第二轮：店名没匹配到，用竞争段落之前的全文补充
-    if (!catFound) {
-      var safeText = fullText;
-      var compIdx = fullText.search(/竞争|切口话术|主要竞争|周边竞品/);
-      if (compIdx > 0) safeText = fullText.substring(0, compIdx);
-      for (var ci = 0; ci < catMap.length; ci++) {
-        if (catMap[ci][0].test(safeText)) {
-          var catEl2 = document.getElementById('f_category');
-          catEl2.value = catMap[ci][1];
-          catEl2.dataset.ocrFilled = '1';
-          markFilled('f_category');
-          filled++;
-          break;
-        }
-      }
-    }
-  }
+  // === 4. 品类 — 不再自动填入，用户手动输入 ===
 
-  // === 5. 推断商户状态 ===
-  if (!document.getElementById('f_status').value) {
-    var statusEl = document.getElementById('f_status');
-    var statusSet = false;
-    // 优先从 Leads状态 字段提取（最可靠，来自截图3）
-    var leadsStatusM = fullText.match(/Leads状态[：:\s]*([\u4e00-\u9fa5]{2,4})/);
-    if (leadsStatusM) {
-      var lsMap = {'待开店':'新户','跟进中':'新户','待续约':'续签','已到期':'断约','合作中':'升档'};
-      var lsVal = lsMap[leadsStatusM[1]];
-      if (lsVal) { statusEl.value = lsVal; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++; statusSet = true; }
-    }
-    // 兜底：关键词推断（仅在 Leads状态 未匹配时生效）
-    if (!statusSet) {
-      if (/新[户客签]|从未合作|首次|未合作|未开通/.test(fullText)) {
-        statusEl.value = '新户'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
-      } else if (/续[签约充]|即将到期|快到期|到期续/.test(fullText)) {
-        statusEl.value = '续签'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
-      } else if (/断约|已过期|已到期|停止合作|中断/.test(fullText)) {
-        statusEl.value = '断约'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
-      } else if (/升档|要升级|想加量|加大投入/.test(fullText)) {
-        statusEl.value = '升档'; statusEl.dataset.ocrFilled = '1'; markFilled('f_status'); filled++;
-      }
-    }
-  }
+  // === 5. 商户状态 — 不再自动填入，用户手动选择 ===
 
   // === 6. 智能推荐售卖目标 ===
   recommendTargets();
@@ -2210,6 +2090,58 @@ function parseTrafficData(text) {
 
 // ==================== 表单工具 ====================
 function toggleCheck(el) { el.classList.toggle('checked'); }
+
+// 品类人均消费参考均值表（元/人，基于市场数据）
+var CATEGORY_AVG_PRICE = {
+  '火锅': 90, '串串': 60, '烤肉': 100, '烧烤': 70,
+  '小龙虾': 90, '水产海鲜': 130, '海鲜': 130,
+  '日料': 150, '寿司': 120,
+  '川菜': 60, '湘菜': 55, '粤菜': 80, '东北菜': 55,
+  '云南菜': 65, '贵州菜': 55,
+  '西餐': 130, '披萨': 70,
+  '米线': 30, '螺蛳粉': 25, '粉面': 25,
+  '快餐': 25, '盖浇饭': 20, '炒饭': 20,
+  '奶茶': 25, '咖啡': 35, '甜品': 40, '烘焙': 35,
+  '炸鸡': 35, '汉堡': 40, '鸡排': 20,
+  '饺子': 45, '包子': 15,
+  '麻辣烫': 40, '冒菜': 40, '钵钵鸡': 35,
+  '煲仔饭': 30, '黄焖鸡': 25,
+  '美食': 60,
+};
+
+// 选择品类后自动填入人均参考值（若已手动填写则不覆盖）
+function onCategoryInput(val) {
+  var priceEl = document.getElementById('f_price_self');
+  if (!priceEl) return;
+  // 已有值且不是自动填充的，不覆盖
+  if (priceEl.value && !priceEl.dataset.autofilled) return;
+  // 精确匹配或模糊匹配
+  var price = CATEGORY_AVG_PRICE[val];
+  if (!price) {
+    // 模糊：品类名包含关键词
+    for (var k in CATEGORY_AVG_PRICE) {
+      if (val.indexOf(k) !== -1 || k.indexOf(val) !== -1) { price = CATEGORY_AVG_PRICE[k]; break; }
+    }
+  }
+  if (price) {
+    priceEl.value = price;
+    priceEl.dataset.autofilled = '1';
+    var tip = document.getElementById('f_price_self_tip');
+    if (tip) tip.textContent = val + '类目市场均值约' + price + '元，可手动修改';
+  }
+}
+
+// 人均手动修改后取消自动填充标记
+document.addEventListener('DOMContentLoaded', function() {
+  var priceEl = document.getElementById('f_price_self');
+  if (priceEl) {
+    priceEl.addEventListener('input', function() {
+      delete this.dataset.autofilled;
+      var tip = document.getElementById('f_price_self_tip');
+      if (tip) tip.textContent = '用于话术算账：每周多10桌=每月多X元';
+    });
+  }
+});
 function fillField(id, val) { document.getElementById(id).value = val; }
 
 function getFormData() {
@@ -2773,6 +2705,9 @@ function renderOutput(primary, d) {
         html += '</div>';
         fullText += '\u3010优秀BD真实切入\u3011\n' + window._topHooks.slice(0, 3).map(function(i) { return i.text; }).join('\n') + '\n\n';
       }
+      // 客户特殊情况 → 话术个性化提示
+      var noteHint = getCustomerNoteHint(d.customer_note, sec.key);
+      if (noteHint) html += noteHint;
       html += '</div></div>';
     });
     _lastFullScript = fullText;
@@ -3030,6 +2965,88 @@ function hl(text) {
   return text
     .replace(/(\d+[\.\d]*(?:万|亿|个|桌|km|公里|%|元|天|次|倍))/g, '<span class="hl">$1</span>')
     .replace(/(不过期|免费|限时|独家|优先|赠送|金牌运维)/g, '<span class="hl">$1</span>');
+}
+
+// ==================== 客户特殊情况 → 话术个性化提示 ====================
+function getCustomerNoteHint(note, sectionKey) {
+  if (!note) return '';
+  var n = note;
+  var hints = [];
+
+  // 状元榜 / 高德状元 / 榜单商户
+  if (/状元榜|榜单|高德榜/.test(n)) {
+    if (sectionKey === 'opener') {
+      hints.push('【状元榜商户】开场可直接点明：「系统显示您已入围高德状元榜，说明您门店数据质量很好，这正是现在做推广性价比最高的时机」——用荣誉感建立信任。');
+    }
+    if (sectionKey === 'benefit') {
+      hints.push('【状元榜加分】可提及：状元榜商户做推广后流量加权更明显，系统会优先推给高质量门店，ROI比普通商户高。');
+    }
+  }
+
+  // 曾合作 / 断约 / 老客
+  if (/曾合作|断约|老客|续签|之前做过/.test(n)) {
+    if (sectionKey === 'opener') {
+      hints.push('【断约老客】建议走「续签」场景话术：先呼应历史合作效果，再说「断约后流量被竞对截走」的系统机制，不要从零介绍产品。');
+    }
+    if (sectionKey === 'hook') {
+      hints.push('【断约数据对比】重点说：「我帮您查了一下，合作期间您的曝光量比现在高X倍，断约后这些流量开始往周边竞对走了」——用前后数据对比刺激决策。');
+    }
+    if (sectionKey === 'close') {
+      hints.push('【老客续签优势】强调：续签享老客专属政策，新签用户拿不到；历史数据证明效果，续签起量更快。');
+    }
+  }
+
+  // 老板强硬 / 不好说话 / 态度差
+  if (/强硬|不好说话|态度|拒绝|挂电话|难沟通/.test(n)) {
+    if (sectionKey === 'opener') {
+      hints.push('【强硬老板】开场要短促、直接，30秒内给出核心价值点，不要铺垫太多——「老板，我就说一件事，您隔壁做了推广的XXX，这个月多来了XX桌新客，我帮您查了一下您这边……」');
+    }
+    if (sectionKey === 'close') {
+      hints.push('【强硬老板·降门槛】不要强逼大单。直接说：「我知道您不想被打扰，我就给您两个字——试一下。6000块试水档，效果好了您自己会来找我，效果不好您最多损失一包烟钱。」');
+    }
+    if (sectionKey === 'retreat') {
+      hints.push('【强硬老板·退守】不要纠缠。干净退出：「好的老板，我先不打扰您了。我把方案发您微信，您哪天有空翻翻看，有问题随时找我。」——留接触点，别让老板产生厌恶感。');
+    }
+  }
+
+  // 有美团合作 / 抖音合作
+  if (/美团|饿了么|抖音|大众点评/.test(n)) {
+    if (sectionKey === 'hook') {
+      hints.push('【有美团/抖音】切入点：「美团的客人是被优惠券吸引来的，高德的客人是主动搜到导航来的——两类客人质量不一样，高德来的基本是正价消费，不需要核销」——差异化定位，不竞争，互补。');
+    }
+    if (sectionKey === 'benefit') {
+      hints.push('【叠加效应】可以说：「现在同时在美团和高德做的商户，整体新客获取成本比只做一个平台低30%，因为两个平台的用户群体差异很大，互相不重叠。」');
+    }
+  }
+
+  // 连锁 / 品牌 / 多门店
+  if (/连锁|品牌|多门店|分店|加盟/.test(n)) {
+    if (sectionKey === 'close') {
+      hints.push('【连锁品牌】重点推品牌顶展产品：「连锁品牌做品牌顶展，同城3个门店同时展示，用户搜XXX直接看到您全部门店，品牌曝光效果远超单店推广」——记得勾选「品牌顶展」选项。');
+    }
+    if (sectionKey === 'opener') {
+      hints.push('【连锁品牌】开场可提：「我专门负责连锁品牌这块，您这边有X家门店，我们有统一的品牌推广方案，比每个门店单独做效率高很多」——建立专业感。');
+    }
+  }
+
+  // 首次接触 / 对高德陌生
+  if (/首次|第一次|不了解|没听说|高德是什么/.test(n)) {
+    if (sectionKey === 'opener') {
+      hints.push('【首次接触】开场先建立平台认知：「高德地图是中国最大的导航软件，每天有超过1亿人用它找吃饭的地方，您现在手机里翻一下，基本都装着的」——帮老板建立基础认知再谈投放。');
+    }
+    if (sectionKey === 'benefit') {
+      hints.push('【首次接触·零风险话术】强调：「6000块试水档相当于先体验，效果出来了您自然会加码，没出来我免费帮您调——这不是赌，是先小规模验证。」');
+    }
+  }
+
+  if (hints.length === 0) return '';
+  var html = '<div style="margin-top:10px;padding:10px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#78350f;line-height:1.7;">';
+  html += '<div style="font-weight:600;color:#92400e;margin-bottom:6px;">💡 客户情况提示（根据「' + n.slice(0,20) + (n.length>20?'…':'') + '」自动生成）</div>';
+  hints.forEach(function(h) {
+    html += '<div style="margin-bottom:4px;">' + h + '</div>';
+  });
+  html += '</div>';
+  return html;
 }
 
 // ==================== 渲染：异议应对（返回HTML字符串） ====================
