@@ -201,6 +201,20 @@ body {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
 }
+/* Step1手填区：输入框暖黄底色，视觉提示"需要手动填写" */
+.step-primary .form-group input,
+.step-primary .form-group select,
+.step-primary .form-group textarea {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+.step-primary .form-group input:focus,
+.step-primary .form-group select:focus,
+.step-primary .form-group textarea:focus {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.15);
+}
 .form-section.step-secondary {
   border-color: #e2e8f0;
 }
