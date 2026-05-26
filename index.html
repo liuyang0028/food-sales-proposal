@@ -1192,11 +1192,69 @@ function preprocessImage(imgSrc) {
   });
 }
 
+// 裁剪图片顶部标题栏区域（高度前8%，宽度左侧62%）专门用于提取商户名
+// 轩辕系统商户首页格式固定：商户名始终在顶部导航栏左侧
+function cropTitleBar(imgSrc) {
+  return new Promise(function(resolve) {
+    const img = new Image();
+    img.onload = function() {
+      const cropH = Math.round(img.height * 0.08); // 前8%高度
+      const cropW = Math.round(img.width  * 0.62); // 左侧62%宽度
+      const scale = Math.max(3, 3000 / cropW);     // 裁剪后放大更多，提升小字识别
+      const canvas = document.createElement('canvas');
+      canvas.width  = cropW * scale;
+      canvas.height = cropH * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      // 只绘制左上角裁剪区域
+      ctx.drawImage(img, 0, 0, cropW, cropH, 0, 0, canvas.width, canvas.height);
+      // 强对比度增强（标题栏背景简单，可以更激进）
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i]   = Math.min(255, Math.max(0, ((data[i]   - 128) * 1.5) + 128));
+        data[i+1] = Math.min(255, Math.max(0, ((data[i+1] - 128) * 1.5) + 128));
+        data[i+2] = Math.min(255, Math.max(0, ((data[i+2] - 128) * 1.5) + 128));
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = function() { resolve(null); };
+    img.src = imgSrc;
+  });
+}
+
 async function runOCR(imgSrc, imgId) {
   ocrCount++;
   setOcrStatus('loading', '正在预处理图片...');
   try {
-    // 预处理图片
+    // 步骤1：先对顶部标题栏做单独OCR，提取商户名（精确区域，干扰极少）
+    let titleBarStoreName = '';
+    try {
+      const titleCropped = await cropTitleBar(imgSrc);
+      if (titleCropped) {
+        setOcrStatus('loading', '正在识别商户名...');
+        const titleResult = await Tesseract.recognize(titleCropped, 'chi_sim+eng', {});
+        const titleText = titleResult.data.text || '';
+        console.log('[OCR] 标题栏识别:', titleText);
+        // 标题栏里只有一行，取第一个非空行，去掉常见UI按钮文字
+        const titleLines = titleText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+        for (var tl of titleLines) {
+          // 去掉右侧按钮文字（更多/报价工具/解决方案/返回等）
+          var cleaned = tl.replace(/更多|报价工具|解决方案|返回|报价|工具|首页|关注|收藏|编辑|分享/g, '').trim();
+          // 必须含有中文，且长度合理
+          if (/[\u4e00-\u9fa5]{2,}/.test(cleaned) && cleaned.length >= 2 && cleaned.length <= 40) {
+            titleBarStoreName = cleaned;
+            console.log('[OCR] 标题栏提取商户名:', titleBarStoreName);
+            break;
+          }
+        }
+      }
+    } catch(e) {
+      console.warn('[OCR] 标题栏识别失败，跳过:', e.message);
+    }
+    // 步骤2：全图OCR（用于其他字段）
     const processed = await preprocessImage(imgSrc);
     setOcrStatus('loading', '首次使用需下载语言包(约10MB)...');
     const result = await Tesseract.recognize(processed, 'chi_sim+eng', {
@@ -1234,7 +1292,7 @@ async function runOCR(imgSrc, imgId) {
       if (tt.includes('business_detail') || tt.includes('store_info')) return true;
       return !tt.includes('traffic') && !tt.includes('case');
     });
-    const filled = parseAndFill(textsForFields.join('\n'));
+    const filled = parseAndFill(textsForFields.join('\n'), titleBarStoreName);
     if (filled > 0) {
       setOcrStatus('done', '识别完成，已填充 ' + filled + ' 个字段，请核对' + (ocrDone < ocrCount ? '（还有图片在识别中...）' : '（如有错误可直接修改或编辑原文后重新解析）'));
       showToast('已填充 ' + filled + ' 个字段，请核对准确性', 'success');
@@ -1245,7 +1303,7 @@ async function runOCR(imgSrc, imgId) {
     // 自动展示OCR原文，方便核对
     var debugBox = document.getElementById('ocrDebugBox');
     debugBox.style.display = 'block';
-    document.getElementById('ocrDebugText').value = allOcrTexts.join('\n---\n') || '(无识别结果)';
+    document.getElementById('ocrDebugText').value = (titleBarStoreName ? '[标题栏] ' + titleBarStoreName + '\n---\n' : '') + (allOcrTexts.join('\n---\n') || '(无识别结果)');
   } catch (err) {
     console.error('[OCR] Error:', err);
     ocrDone++;
@@ -1281,7 +1339,7 @@ function clearOcrFields() {
 // UI标签黑名单：商机详情/流量页面的系统文字，不是店名
 var UI_LABEL_BLACKLIST = /所属商圈|连锁门店|门店设施|门店信息|门店量|门店数|门店评|门店详情|商机详情|商机概述|线上流量|流量数据|搜索转化|点击转化|导航转化|电话转化|本店|周边|同城|商户信息|对照截图|截图填写|售卖目标|商户状态|已自动|识别完成|请选择|品类|城市|竞争|异议|当前政策|查看原文|设施|查看|编辑|更多|收藏|操作|状态|收起|展开|返回|关闭|确认|取消|提交|保存|删除|刷新|加载|详情|基本信息|经营信息|经营类目|联系方式|营业时间|环境图|菜品图|门头照|领取人|认领状态|认领时间|待开店|待续约|已到期|合作中|跟进中|私淘|私海|公海|Leads|当前阶段|历史阶段|商机建联|意向培养|开店签约|成交签约|沉默激活|流失挽回|解决方案|报价单|优秀案例|待完成|去完成|门店地址|合作时间|距离|湖南省|长沙市|岳麓区|天心区|开福区|雨花区|芙蓉区|望城区|长沙县|浏阳市|宁乡市/;
 
-function parseAndFill(text) {
+function parseAndFill(text, titleBarStoreName) {
   let filled = 0;
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
   // 预处理：为每行生成一个"合并中文字间空格"的版本，提升匹配率
@@ -1325,6 +1383,11 @@ function parseAndFill(text) {
 
   // === 1. 解析商户名称 ===
   let storeName = '';
+  // 策略A0：优先使用标题栏专项OCR结果（最精确，格式固定区域）
+  if (titleBarStoreName && titleBarStoreName.length >= 2) {
+    storeName = titleBarStoreName;
+    console.log('[parseAndFill] 策略A0(标题栏) 命中:', storeName);
+  }
   // allLines = 原始行 + 合并空格后的行（去重），提高OCR不稳定时的匹配率
   var allSearchLines = [];
   for (var si = 0; si < mergedLines.length; si++) {
