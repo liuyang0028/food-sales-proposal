@@ -779,6 +779,23 @@ body {
           </div>
           <div id="targetRecommend" style="font-size:11px;color:#16a34a;margin-top:4px;display:none;"></div>
         </div>
+        <div class="form-group">
+          <label>所属商圈</label>
+          <input type="text" id="f_district" placeholder="如：长堤路">
+        </div>
+        <div class="form-group">
+          <label>本店人均 <span class="unit">(元)</span></label>
+          <input type="number" id="f_price_self" placeholder="如：88">
+          <div class="field-tip" id="f_price_self_tip">选品类后自动填入参考值</div>
+        </div>
+        <div class="form-group">
+          <label>同城人均 <span class="unit">(元)</span></label>
+          <input type="number" id="f_price_city" placeholder="如：49">
+        </div>
+        <div class="form-group full">
+          <label>客户特殊情况 <span class="unit">（影响话术重点）</span></label>
+          <textarea id="f_customer_note" rows="2" placeholder="如：状元榜商户、曾合作断约、老板强硬、有美团合作、连锁品牌等" style="width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;color:#1e293b;font-size:12px;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+        </div>
       </div>
     </div>
 
@@ -829,39 +846,6 @@ body {
           </thead>
           <tbody id="traffic_tbody"></tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- Step 3：补充信息（可选，默认折叠） -->
-    <div class="form-section step-optional">
-      <div class="optional-toggle" onclick="toggleOptional(this)">
-        <div class="form-section-title" style="margin-bottom:0;">
-          <span class="step-badge s3">3</span>
-          <span class="step-label-text">补充信息</span>
-          <span class="step-sublabel">可选 · 提升方案精准度</span>
-        </div>
-        <span class="toggle-arrow">▲</span>
-      </div>
-      <div class="optional-body">
-        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
-          <div class="form-group">
-            <label>所属商圈</label>
-            <input type="text" id="f_district" placeholder="如：长堤路">
-          </div>
-          <div class="form-group">
-            <label>本店人均 <span class="unit">(元)</span></label>
-            <input type="number" id="f_price_self" placeholder="如：88">
-            <div class="field-tip" id="f_price_self_tip">选择品类后自动填入参考值</div>
-          </div>
-          <div class="form-group">
-            <label>同城人均 <span class="unit">(元)</span></label>
-            <input type="number" id="f_price_city" placeholder="如：49">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>客户特殊情况 <span class="unit">（影响话术重点）</span></label>
-          <textarea id="f_customer_note" rows="2" placeholder="如：状元榜商户、曾合作断约、老板强硬、有美团合作、连锁品牌等" style="width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;color:#1e293b;font-size:12px;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
-        </div>
       </div>
     </div>
 
