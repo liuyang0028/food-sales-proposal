@@ -2315,7 +2315,97 @@ function T(tpl, d) {
     searchDesc = '每月有' + searchMine + '次搜索指向您的店';
   }
 
-  return tpl
+  // 先处理条件表达式（在简单替换之前，变量名还是原始名称）
+  var tplVars = {
+    exposure_desc: exposureDesc,
+    exposure_mine: exposureMine,
+    exposure_nearby: exposureNearby,
+    search_mine: searchMine,
+    search_desc: searchDesc,
+    price_self: d.price_self || '',
+    price_city: d.price_city || '',
+    daily_tables: dailyNewTables ? String(dailyNewTables) : '',
+    monthly_add: String(monthlyAddRevenue),
+    district: d.district || '',
+    city: d.city || '',
+    store: d.store || '',
+    category: d.category || '美食',
+    holiday: d.holiday || '节假日'
+  };
+
+  function evalTplExpr(expr) {
+    var qIdx = expr.indexOf('?');
+    if (qIdx < 0) return null;
+    var varName = expr.slice(0, qIdx).trim();
+    if (!/^\w+$/.test(varName)) return null;
+    var rest = expr.slice(qIdx + 1);
+    var inQ = null, colonIdx = -1;
+    for (var i = 0; i < rest.length; i++) {
+      var c = rest[i];
+      if (!inQ && (c === '"' || c === "'")) { inQ = c; }
+      else if (inQ && c === inQ && rest[i-1] !== '\\') { inQ = null; }
+      else if (!inQ && c === ':') { colonIdx = i; break; }
+    }
+    if (colonIdx < 0) return null;
+    var trueExpr  = rest.slice(0, colonIdx).trim();
+    var falseExpr = rest.slice(colonIdx + 1).trim();
+    var val = tplVars[varName];
+    var truthy = val && val !== '0';
+    var chosen = truthy ? trueExpr : falseExpr;
+    function evalParts(s) {
+      var parts = [], cur = '', inQt = null;
+      for (var j = 0; j < s.length; j++) {
+        var ch = s[j];
+        if (!inQt && (ch === '"' || ch === "'")) { inQt = ch; cur += ch; }
+        else if (inQt && ch === inQt) { inQt = null; cur += ch; }
+        else if (!inQt && ch === '+') { parts.push(cur.trim()); cur = ''; }
+        else { cur += ch; }
+      }
+      if (cur.trim()) parts.push(cur.trim());
+      var out = '';
+      for (var k = 0; k < parts.length; k++) {
+        var p = parts[k];
+        if (p.length >= 2 && (p[0] === '"' || p[0] === "'") && (p[p.length-1] === '"' || p[p.length-1] === "'")) {
+          out += p.slice(1, -1);
+        } else if (/^\w+$/.test(p) && tplVars.hasOwnProperty(p)) {
+          out += tplVars[p] || '';
+        } else {
+          out += p;
+        }
+      }
+      return out;
+    }
+    return evalParts(chosen);
+  }
+
+  // 逐字符扫描处理条件表达式
+  var processed = '';
+  var pos = 0;
+  while (pos < tpl.length) {
+    var open = tpl.indexOf('{', pos);
+    if (open < 0) { processed += tpl.slice(pos); break; }
+    processed += tpl.slice(pos, open);
+    var depth = 1, end = open + 1, inStr = null;
+    while (end < tpl.length && depth > 0) {
+      var ch = tpl[end];
+      if (!inStr && (ch === '"' || ch === "'")) inStr = ch;
+      else if (inStr && ch === inStr && tpl[end-1] !== '\\') inStr = null;
+      else if (!inStr && ch === '{') depth++;
+      else if (!inStr && ch === '}') depth--;
+      end++;
+    }
+    var inner = tpl.slice(open + 1, end - 1);
+    var evaluated = evalTplExpr(inner);
+    if (evaluated !== null) {
+      processed += evaluated;
+    } else {
+      processed += '{' + inner + '}';
+    }
+    pos = end;
+  }
+
+  // 再做简单变量替换
+  return processed
     .replace(/\{store\}/g, d.store || '')
     .replace(/\{city\}/g, d.city || '')
     .replace(/\{district\}/g, d.district || d.city || '')
@@ -2339,49 +2429,6 @@ function T(tpl, d) {
     .replace(/\{calc\}/g, String(monthlyAddRevenue))
     .replace(/\{case_store\}/g, (d.caseData && d.caseData.storeName) || '附近商户')
     .replace(/\{case_orders\}/g, (d.caseData && d.caseData.monthlyOrders) || '');
-
-  // 处理条件表达式占位符：{varName ? "真值" : "假值"}
-  // 变量表：当前可用的所有变量
-  var tplVars = {
-    exposure_desc: exposureDesc,
-    exposure_mine: exposureMine,
-    exposure_nearby: exposureNearby,
-    search_mine: searchMine,
-    search_desc: searchDesc,
-    price_self: d.price_self || '',
-    price_city: d.price_city || '',
-    daily_tables: dailyNewTables ? String(dailyNewTables) : '',
-    monthly_add: String(monthlyAddRevenue),
-    district: d.district || '',
-    city: d.city || '',
-    store: d.store || '',
-    category: d.category || '美食',
-    holiday: d.holiday || '节假日'
-  };
-
-  // 替换 {varName ? trueExpr : falseExpr} 形式的条件占位符
-  // 支持真假值为字符串字面量或变量名
-  var result = tpl.replace(/\{(\w+)\s*\?\s*([\s\S]*?)\s*:\s*([\s\S]*?)\}/g, function(match, varName, trueExpr, falseExpr) {
-    var val = tplVars[varName];
-    var truthy = val && val !== '0' && val !== '';
-    var chosen = truthy ? trueExpr : falseExpr;
-    // 去掉两端引号（字符串字面量）
-    chosen = chosen.trim().replace(/^["']|["']$/g, '');
-    // 如果是变量名（纯单词），取变量值
-    if (/^\w+$/.test(chosen) && tplVars.hasOwnProperty(chosen)) {
-      chosen = tplVars[chosen] || '';
-    }
-    // 替换chosen内部的变量引用（如 exposure_desc + "，说明..."）
-    chosen = chosen.replace(/(\w+)\s*\+\s*["'](.*?)["']/g, function(m, vn, suffix) {
-      return (tplVars[vn] || '') + suffix;
-    });
-    chosen = chosen.replace(/["'](.*?)["']\s*\+\s*(\w+)\s*\+\s*["'](.*?)["']/g, function(m, pre, vn, suf) {
-      return pre + (tplVars[vn] || '') + suf;
-    });
-    return chosen;
-  });
-
-  return result;
 }
 
 // ==================== 营销活动数据（招商抓手） ====================
