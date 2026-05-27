@@ -201,21 +201,6 @@ body {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
 }
-/* Step1手填区：输入框暖黄底色，视觉提示"需要手动填写" */
-.step-primary .form-group input,
-.step-primary .form-group select,
-.step-primary .form-group textarea {
-  background: #fef9c3 !important;
-  border-color: #f59e0b !important;
-  border-width: 1.5px !important;
-}
-.step-primary .form-group input:focus,
-.step-primary .form-group select:focus,
-.step-primary .form-group textarea:focus {
-  background: #fef9c3 !important;
-  border-color: #d97706 !important;
-  box-shadow: 0 0 0 2px rgba(217,119,6,0.18) !important;
-}
 .form-section.step-secondary {
   border-color: #e2e8f0;
 }
@@ -281,6 +266,21 @@ body {
 .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
 .form-group select { cursor: pointer; }
 .form-group select option { background: #fff; }
+/* Step1手填区：输入框暖黄底色，需要手动填写 */
+.step-primary .form-group input,
+.step-primary .form-group select,
+.step-primary .form-group textarea {
+  background: #fef9c3;
+  border-color: #f59e0b;
+  border-width: 1.5px;
+}
+.step-primary .form-group input:focus,
+.step-primary .form-group select:focus,
+.step-primary .form-group textarea:focus {
+  background: #fef9c3;
+  border-color: #d97706;
+  box-shadow: 0 0 0 2px rgba(217,119,6,0.18);
+}
 
 /* Traffic data table */
 .traffic-table-area { border-radius: 8px; overflow: hidden; margin-top: 2px; background: #f8fafc; border: 1px solid #e2e8f0; }
@@ -2339,6 +2339,49 @@ function T(tpl, d) {
     .replace(/\{calc\}/g, String(monthlyAddRevenue))
     .replace(/\{case_store\}/g, (d.caseData && d.caseData.storeName) || '附近商户')
     .replace(/\{case_orders\}/g, (d.caseData && d.caseData.monthlyOrders) || '');
+
+  // 处理条件表达式占位符：{varName ? "真值" : "假值"}
+  // 变量表：当前可用的所有变量
+  var tplVars = {
+    exposure_desc: exposureDesc,
+    exposure_mine: exposureMine,
+    exposure_nearby: exposureNearby,
+    search_mine: searchMine,
+    search_desc: searchDesc,
+    price_self: d.price_self || '',
+    price_city: d.price_city || '',
+    daily_tables: dailyNewTables ? String(dailyNewTables) : '',
+    monthly_add: String(monthlyAddRevenue),
+    district: d.district || '',
+    city: d.city || '',
+    store: d.store || '',
+    category: d.category || '美食',
+    holiday: d.holiday || '节假日'
+  };
+
+  // 替换 {varName ? trueExpr : falseExpr} 形式的条件占位符
+  // 支持真假值为字符串字面量或变量名
+  var result = tpl.replace(/\{(\w+)\s*\?\s*([\s\S]*?)\s*:\s*([\s\S]*?)\}/g, function(match, varName, trueExpr, falseExpr) {
+    var val = tplVars[varName];
+    var truthy = val && val !== '0' && val !== '';
+    var chosen = truthy ? trueExpr : falseExpr;
+    // 去掉两端引号（字符串字面量）
+    chosen = chosen.trim().replace(/^["']|["']$/g, '');
+    // 如果是变量名（纯单词），取变量值
+    if (/^\w+$/.test(chosen) && tplVars.hasOwnProperty(chosen)) {
+      chosen = tplVars[chosen] || '';
+    }
+    // 替换chosen内部的变量引用（如 exposure_desc + "，说明..."）
+    chosen = chosen.replace(/(\w+)\s*\+\s*["'](.*?)["']/g, function(m, vn, suffix) {
+      return (tplVars[vn] || '') + suffix;
+    });
+    chosen = chosen.replace(/["'](.*?)["']\s*\+\s*(\w+)\s*\+\s*["'](.*?)["']/g, function(m, pre, vn, suf) {
+      return pre + (tplVars[vn] || '') + suf;
+    });
+    return chosen;
+  });
+
+  return result;
 }
 
 // ==================== 营销活动数据（招商抓手） ====================
