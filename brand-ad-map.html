@@ -1127,9 +1127,15 @@ init();
         if(!dashData.length){ status.textContent='无匹配城市'; status.style.color='#f59e0b'; return; }
         try { localStorage.setItem('brand_ad_map_data', JSON.stringify(rows)); } catch(ex){}
         refreshDashboard(dashData, '上传·'+dashData.length+'条');
-        // 提供下载共享版本
-        status.innerHTML = '✅ 解析成功！'+dashData.length+'条<br><button id="btnDownloadShare" style="margin-top:8px;padding:6px 14px;border-radius:4px;border:none;background:#059669;color:#fff;font-size:12px;cursor:pointer;">下载共享版本（含数据）</button><div style="font-size:10px;color:#94a3b8;margin-top:4px;">下载后改名 brand-ad-map.html 上传到 GitHub</div>';
+        // 提供发布到线上 + 下载离线版
+        var ghCfg = getGhConfig();
+        var pubStyle = ghCfg ? 'background:#059669;' : 'background:#475569;';
+        var pubLabel = ghCfg ? '🚀 一键发布到线上' : '🚀 发布到线上（需先配置）';
+        status.innerHTML = '✅ 解析成功！共'+dashData.length+'条数据<br><button id="btnPublishOnline" style="margin-top:8px;padding:8px 18px;border-radius:6px;border:none;'+pubStyle+'color:#fff;font-size:13px;cursor:pointer;font-weight:500;">'+pubLabel+'</button> <button id="btnDownloadShare" style="margin-top:8px;padding:6px 14px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;">下载离线版</button><div id="publishProgress" style="font-size:11px;margin-top:6px;"></div>';
         status.style.color = '#10b981';
+        document.getElementById('btnPublishOnline').addEventListener('click', function(){
+          publishToGitHub(rows);
+        });
         document.getElementById('btnDownloadShare').addEventListener('click', function(){
           var html = document.documentElement.outerHTML;
           var marker = 'var DEFAULT_RAW_DATA = [];';
