@@ -103,6 +103,7 @@ body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #0f1
     <a href="https://fbi.alibaba-inc.com/fbi/chatbi/show_visualization.htm?uid=26bb11b85e234a17ab314de691c727bb" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#7c3aed;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">高频顶展2.0价格查询工具AI版</a>
     <a href="https://alidocs.dingtalk.com/i/nodes/R1zknDm0WR3Q1AoXtxzvy2qoVBQEx5rG" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#b45309;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">顶展产品文档</a>
     <button id="btnDateCalc" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#0369a1;color:#fff;font-size:11px;cursor:pointer;">日期计算</button>
+    <button id="btnGhConfig" title="发布设置" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#1e40af;color:#fff;font-size:11px;cursor:pointer;">发布设置</button>
     <button id="btnUpdateData" title="更新数据" style="padding:4px 8px;border-radius:6px;border:1px solid #334155;background:transparent;color:#64748b;font-size:14px;cursor:pointer;line-height:1;">&#9881;</button>
     <span class="data-time" id="dataTime">数据更新: --</span>
   </div>
@@ -217,6 +218,36 @@ body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #0f1
     <div class="detail-content" id="detailContent">
       <div class="detail-placeholder">点击左侧地图城市气泡<br>查看该城市占量明细与空余坑位</div>
     </div>
+  </div>
+</div>
+
+<!-- GitHub 配置弹窗 -->
+<div id="ghConfigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:12px;padding:24px;width:420px;max-width:90%;color:#e2e8f0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:15px;">GitHub 发布配置</h3>
+      <span id="ghConfigClose" style="cursor:pointer;font-size:20px;color:#94a3b8;">&times;</span>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;margin-bottom:14px;">配置一次后，每次上传数据可一键发布到线上，无需手动上传文件到 GitHub。</p>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">GitHub 用户名</label>
+      <input type="text" id="ghOwner" placeholder="如: your-username" style="width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#fff;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">仓库名称</label>
+      <input type="text" id="ghRepo" value="food-sales-proposal" placeholder="如: food-sales-proposal" style="width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#fff;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">Personal Access Token <a href="https://github.com/settings/tokens/new?scopes=repo&description=brand-ad-map" target="_blank" style="color:#3b82f6;font-size:10px;">(点击创建)</a></label>
+      <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#fff;font-size:13px;box-sizing:border-box;">
+      <div style="font-size:10px;color:#64748b;margin-top:4px;">需要 repo 权限，Token 仅存在你的浏览器中</div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">数据文件路径</label>
+      <input type="text" id="ghPath" value="brand-ad-map-data.json" placeholder="brand-ad-map-data.json" style="width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#fff;font-size:13px;box-sizing:border-box;">
+    </div>
+    <button id="ghConfigSave" style="width:100%;padding:10px;border-radius:6px;border:none;background:#1e40af;color:#fff;font-size:13px;cursor:pointer;font-weight:500;">保存配置</button>
+    <p id="ghConfigStatus" style="font-size:11px;color:#64748b;margin-top:8px;"></p>
   </div>
 </div>
 
@@ -452,6 +483,7 @@ function initSearchSelect(containerId, options, onChange){
 
 // ==================== Core Logic ====================
 var rawData = [];
+var DEFAULT_RAW_DATA = []; // 内置数据，上传后通过"下载共享版"更新
 var filteredData = [];
 var allCityKeywords = {};
 var selectedCity = '';
@@ -1095,6 +1127,18 @@ init();
         if(!dashData.length){ status.textContent='无匹配城市'; status.style.color='#f59e0b'; return; }
         try { localStorage.setItem('brand_ad_map_data', JSON.stringify(rows)); } catch(ex){}
         refreshDashboard(dashData, '上传·'+dashData.length+'条');
+        // 提供下载共享版本
+        status.innerHTML = '✅ 解析成功！'+dashData.length+'条<br><button id="btnDownloadShare" style="margin-top:8px;padding:6px 14px;border-radius:4px;border:none;background:#059669;color:#fff;font-size:12px;cursor:pointer;">下载共享版本（含数据）</button><div style="font-size:10px;color:#94a3b8;margin-top:4px;">下载后改名 brand-ad-map.html 上传到 GitHub</div>';
+        status.style.color = '#10b981';
+        document.getElementById('btnDownloadShare').addEventListener('click', function(){
+          var html = document.documentElement.outerHTML;
+          var marker = 'var DEFAULT_RAW_DATA = [];';
+          var replacement = 'var DEFAULT_RAW_DATA = ' + JSON.stringify(rows) + ';';
+          html = html.replace(marker, replacement);
+          var blob = new Blob(['<!DOCTYPE html><html>' + html.split('<html>').slice(1).join('<html>')], {type:'text/html'});
+          var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = 'brand-ad-map.html'; a.click();
+        });
         hideModal();
       } catch(ex){ status.textContent='解析出错: '+ex.message; status.style.color='#ef4444'; }
     };
@@ -1124,14 +1168,19 @@ init();
   }
   function excelDateToStr(serial){ var d=new Date((Math.floor(serial-25569))*86400000); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 
-  // Load cache
+  // Load cache or default data, then try remote
   try {
     var cached = localStorage.getItem('brand_ad_map_data');
     if(cached){
       var cachedData = transformApiData(JSON.parse(cached));
       if(cachedData.length > 0) refreshDashboard(cachedData, '缓存·'+cachedData.length+'条');
+    } else if(DEFAULT_RAW_DATA && DEFAULT_RAW_DATA.length > 0){
+      var defaultData = transformApiData(DEFAULT_RAW_DATA);
+      if(defaultData.length > 0) refreshDashboard(defaultData, '内置·'+defaultData.length+'条');
     }
   } catch(e){}
+  // Try fetch remote data.json (GitHub Pages)
+  loadRemoteData();
 })();
 
 function refreshDashboard(data, label){
@@ -1147,6 +1196,136 @@ function refreshDashboard(data, label){
   document.getElementById('dataTime').textContent = '数据更新: ' + dateStr(today()) + ' (' + label + ')';
 }
 
+// ==================== GitHub API 发布功能 ====================
+function getGhConfig(){
+  try {
+    var cfg = JSON.parse(localStorage.getItem('gh_publish_config') || 'null');
+    if(cfg && cfg.token && cfg.owner && cfg.repo) return cfg;
+  } catch(e){}
+  return null;
+}
+
+function saveGhConfig(cfg){
+  localStorage.setItem('gh_publish_config', JSON.stringify(cfg));
+}
+
+function loadRemoteData(){
+  var ghCfg = getGhConfig();
+  var dataUrl = 'brand-ad-map-data.json';
+  if(ghCfg){
+    dataUrl = 'https://raw.githubusercontent.com/' + ghCfg.owner + '/' + ghCfg.repo + '/main/' + (ghCfg.path || 'brand-ad-map-data.json') + '?t=' + Date.now();
+  }
+  fetch(dataUrl).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(rows){
+    if(!rows || !rows.length) return;
+    var dashData = transformApiData(rows);
+    if(dashData.length > 0) refreshDashboard(dashData, '线上·'+dashData.length+'条');
+  }).catch(function(e){
+    if(ghCfg){
+      fetch('brand-ad-map-data.json').then(function(r){
+        if(!r.ok) return;
+        return r.json();
+      }).then(function(rows){
+        if(rows && rows.length){
+          var dashData = transformApiData(rows);
+          if(dashData.length > 0) refreshDashboard(dashData, '线上·'+dashData.length+'条');
+        }
+      }).catch(function(){});
+    }
+  });
+}
+
+function publishToGitHub(rows){
+  var ghCfg = getGhConfig();
+  var progressEl = document.getElementById('publishProgress');
+  if(!ghCfg){
+    document.getElementById('ghConfigModal').style.display = 'flex';
+    if(progressEl) progressEl.innerHTML = '<span style="color:#f59e0b;">请先完成发布配置，保存后再次点击发布</span>';
+    return;
+  }
+  if(progressEl) progressEl.innerHTML = '<span style="color:#3b82f6;">正在发布到 GitHub...</span>';
+  var filePath = ghCfg.path || 'brand-ad-map-data.json';
+  var apiUrl = 'https://api.github.com/repos/' + ghCfg.owner + '/' + ghCfg.repo + '/contents/' + filePath;
+  var content = btoa(unescape(encodeURIComponent(JSON.stringify(rows))));
+
+  fetch(apiUrl, {
+    headers: { 'Authorization': 'token ' + ghCfg.token, 'Accept': 'application/vnd.github.v3+json' }
+  }).then(function(r){ return r.json(); }).then(function(existing){
+    var body = {
+      message: 'update inventory data ' + dateStr(today()),
+      content: content,
+      branch: 'main'
+    };
+    if(existing && existing.sha) body.sha = existing.sha;
+    return fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'token ' + ghCfg.token,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+  }).then(function(r){
+    if(!r.ok) return r.json().then(function(err){ throw new Error(err.message || 'HTTP '+r.status); });
+    return r.json();
+  }).then(function(result){
+    if(progressEl) progressEl.innerHTML = '<span style="color:#10b981;">✅ 发布成功！同事刷新页面即可看到最新数据</span>';
+  }).catch(function(err){
+    if(progressEl) progressEl.innerHTML = '<span style="color:#ef4444;">发布失败: ' + err.message + '</span>';
+    if(err.message && err.message.indexOf('Bad credentials') >= 0){
+      if(progressEl) progressEl.innerHTML += '<br><span style="color:#f59e0b;">Token 无效或已过期，请点击"发布设置"重新配置</span>';
+    }
+  });
+}
+
+// GitHub config modal logic
+(function(){
+  var modal = document.getElementById('ghConfigModal');
+  var btnOpen = document.getElementById('btnGhConfig');
+  var btnClose = document.getElementById('ghConfigClose');
+  var btnSave = document.getElementById('ghConfigSave');
+  var statusEl = document.getElementById('ghConfigStatus');
+
+  btnOpen.addEventListener('click', function(){
+    modal.style.display = 'flex';
+    var cfg = getGhConfig();
+    if(cfg){
+      document.getElementById('ghOwner').value = cfg.owner || '';
+      document.getElementById('ghRepo').value = cfg.repo || '';
+      document.getElementById('ghToken').value = cfg.token || '';
+      document.getElementById('ghPath').value = cfg.path || 'brand-ad-map-data.json';
+    }
+  });
+  btnClose.addEventListener('click', function(){ modal.style.display = 'none'; });
+  modal.addEventListener('click', function(e){ if(e.target === modal) modal.style.display = 'none'; });
+
+  btnSave.addEventListener('click', function(){
+    var owner = document.getElementById('ghOwner').value.trim();
+    var repo = document.getElementById('ghRepo').value.trim();
+    var token = document.getElementById('ghToken').value.trim();
+    var path = document.getElementById('ghPath').value.trim() || 'brand-ad-map-data.json';
+    if(!owner || !repo || !token){
+      statusEl.innerHTML = '<span style="color:#ef4444;">请填写完整信息</span>';
+      return;
+    }
+    statusEl.innerHTML = '<span style="color:#3b82f6;">验证中...</span>';
+    fetch('https://api.github.com/repos/' + owner + '/' + repo, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    }).then(function(r){
+      if(!r.ok) throw new Error('验证失败 (HTTP '+r.status+')');
+      return r.json();
+    }).then(function(repoInfo){
+      saveGhConfig({ owner: owner, repo: repo, token: token, path: path });
+      statusEl.innerHTML = '<span style="color:#10b981;">✅ 配置已保存！仓库: ' + repoInfo.full_name + '</span>';
+      setTimeout(function(){ modal.style.display = 'none'; }, 1500);
+    }).catch(function(err){
+      statusEl.innerHTML = '<span style="color:#ef4444;">' + err.message + '，请检查用户名/仓库名/Token</span>';
+    });
+  });
+})();
 
 // ==================== 统计维度切换 ====================
 document.getElementById('statsDim').addEventListener('click', function(e){
@@ -1257,12 +1436,4 @@ document.getElementById('btnTourism').addEventListener('click', function(){
 </script>
 
 </body>
-</html>
-</html>
-</html>
-</html>
-</html>
-</html>
-</html>
-</html>
 </html>
