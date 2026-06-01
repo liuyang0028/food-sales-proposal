@@ -1290,6 +1290,8 @@ function publishToGitHub(rows){
   var statusEl = document.getElementById('ghConfigStatus');
 
   btnOpen.addEventListener('click', function(){
+    var pwd = prompt('请输入管理密码：');
+    if(pwd !== '666888'){ alert('密码错误'); return; }
     modal.style.display = 'flex';
     var cfg = getGhConfig();
     if(cfg){
