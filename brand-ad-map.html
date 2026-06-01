@@ -698,7 +698,7 @@ function renderDetail(city){
   var sp = getSpecialty(city);
   if(sp) hintHtml += '<span class="tag tag-specialty">本地特色: '+sp.keywords.join(', ')+'</span>';
   var hintEl = document.getElementById('specialtyHint');
-  if(!hintEl){ hintEl = document.createElement('div'); hintEl.id='specialtyHint'; hintEl.className='specialty-hint'; document.getElementById('detailSubtitle').parentNode.insertBefore(hintEl, document.getElementById('detailTabs')); }
+  if(!hintEl){ hintEl = document.createElement('div'); hintEl.id='specialtyHint'; hintEl.className='specialty-hint'; var tabsEl = document.getElementById('detailTabs'); tabsEl.parentNode.insertBefore(hintEl, tabsEl); }
   hintEl.innerHTML = hintHtml;
   hintEl.style.display = hintHtml ? '' : 'none';
   renderDetailTab(city, catMap);
