@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品广占量地图看板</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #0f1923; color: #e2e8f0; min-height: 100vh; }
+
+.header { background: #1a2634; padding: 14px 24px; border-bottom: 1px solid #2d3e50; display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 18px; color: #fff; font-weight: 500; }
+.header .subtitle { font-size: 11px; color: #64748b; margin-top: 2px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.data-time { font-size: 10px; color: #64748b; }
+
+/* Filters */
+.filter-bar { background: #1a2634; padding: 10px 24px; border-bottom: 1px solid #2d3e50; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.filter-group { display: flex; align-items: center; gap: 6px; position: relative; }
+.filter-label { font-size: 11px; color: #94a3b8; }
+.legend { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #94a3b8; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-green { background: #10b981; }
+.dot-yellow { background: #eab308; }
+.dot-orange { background: #f59e0b; }
+.dot-red { background: #ef4444; }
+
+/* Searchable Select */
+.search-select { position: relative; width: 130px; }
+.search-select.wide { width: 180px; }
+.search-select input { width: 100%; padding: 6px 24px 6px 10px; border-radius: 6px; border: 1px solid #334155; background: #0f1923; color: #e2e8f0; font-size: 12px; outline: none; }
+.search-select input:focus { border-color: #3b82f6; }
+.search-select input::placeholder { color: #64748b; }
+.search-select .ss-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); color: #64748b; cursor: pointer; font-size: 14px; line-height: 1; display: none; }
+.search-select input:not(:placeholder-shown) ~ .ss-clear { display: block; }
+.search-select .ss-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: #1a2634; border: 1px solid #334155; border-radius: 6px; margin-top: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.search-select .ss-dropdown.open { display: block; }
+.search-select .ss-option { padding: 6px 10px; font-size: 12px; color: #cbd5e1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-select .ss-option:hover { background: #334155; }
+.search-select .ss-option.active { background: #1e40af; color: #fff; }
+
+/* Main Layout */
+.main { display: flex; height: calc(100vh - 110px); }
+.map-panel { flex: 1; position: relative; }
+.side-panel { width: 380px; background: #1a2634; border-left: 1px solid #2d3e50; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* Stats Cards */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 14px; }
+.stat-card { background: #0f1923; border: 1px solid #2d3e50; border-radius: 8px; padding: 12px; text-align: center; }
+.stat-val { font-size: 22px; font-weight: 600; color: #fff; }
+.stat-label { font-size: 10px; color: #64748b; margin-top: 4px; }
+.stat-val.blue { color: #3b82f6; }
+.stat-val.green { color: #10b981; }
+.stat-val.red { color: #ef4444; }
+.stat-val.orange { color: #f59e0b; }
+.stat-val.purple { color: #a855f7; }
+
+/* Detail Panel */
+.detail-header { padding: 12px 14px; border-bottom: 1px solid #2d3e50; }
+.detail-header h3 { font-size: 14px; color: #fff; }
+.detail-header .city-info { font-size: 11px; color: #64748b; margin-top: 4px; }
+.detail-tabs { display: flex; border-bottom: 1px solid #2d3e50; }
+.detail-tab { flex: 1; padding: 10px 8px; text-align: center; font-size: 11px; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.detail-tab:hover { color: #94a3b8; }
+.detail-tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+.detail-content { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.detail-placeholder { text-align: center; padding: 60px 20px; color: #475569; font-size: 13px; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.data-table th { padding: 8px 6px; text-align: left; color: #64748b; font-weight: 500; border-bottom: 1px solid #2d3e50; white-space: nowrap; }
+.data-table td { padding: 7px 6px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+.data-table tr:hover td { background: #1e293b; }
+.status-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 500; }
+.badge-occupied { background: #fee2e2; color: #dc2626; }
+.badge-available { background: #dcfce7; color: #16a34a; }
+.badge-date { background: #dbeafe; color: #2563eb; }
+.badge-citywide { background: #f3e8ff; color: #9333ea; }
+.badge-specialty { background: #fef3c7; color: #d97706; }
+.badge-key { background: #fee2e2; color: #dc2626; font-weight: 600; }
+.stats-dim-btn { padding: 2px 8px; border-radius: 3px; cursor: pointer; background: #334155; color: #94a3b8; transition: all .2s; }
+.stats-dim-btn.active { background: #3b82f6; color: #fff; }
+.badge-tourism { background: #fce7f3; color: #db2777; }
+.tourism-btn { padding:4px 10px;border-radius:4px;border:1px solid #334155;background:#0f1923;color:#94a3b8;font-size:10px;cursor:pointer;transition:all 0.2s; }
+.tourism-btn.active { background:#db2777;color:#fff;border-color:#db2777; }
+.specialty-hint { padding:6px 10px;background:#1e293b;border:1px solid #334155;border-radius:6px;margin-bottom:8px;font-size:11px;color:#e2e8f0;display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+.specialty-hint .tag { padding:1px 6px;border-radius:3px;font-size:10px; }
+.specialty-hint .tag-tourism { background:#fce7f3;color:#db2777; }
+.specialty-hint .tag-specialty { background:#fef3c7;color:#d97706; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>品广占量地图看板</h1>
+    <div class="subtitle">品牌广告顶展占量可视化 · 基于可售库存计算占量率 · 均支持单店买全城</div>
+  </div>
+  <div class="header-right">
+    <button id="btnKeywordSearch" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#065f46;color:#fff;font-size:11px;cursor:pointer;">关键词查询</button>
+    <a href="https://fbi.alibaba-inc.com/fbi/chatbi/show_visualization.htm?uid=26bb11b85e234a17ab314de691c727bb" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#7c3aed;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">高频顶展2.0价格查询工具AI版</a>
+    <a href="https://alidocs.dingtalk.com/i/nodes/R1zknDm0WR3Q1AoXtxzvy2qoVBQEx5rG" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#b45309;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">顶展产品文档</a>
+    <button id="btnUpdateData" title="更新数据" style="padding:4px 8px;border-radius:6px;border:1px solid #334155;background:transparent;color:#64748b;font-size:14px;cursor:pointer;line-height:1;">&#9881;</button>
+    <span class="data-time" id="dataTime">数据更新: --</span>
+  </div>
+</div>
+
+<!-- 数据上传弹窗 -->
+<div id="pasteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a2634;border:1px solid #2d3e50;border-radius:12px;width:600px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column;padding:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="color:#fff;font-size:15px;">上传数据更新</h3>
+      <button id="btnCloseModal" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">&times;</button>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;margin-bottom:10px;">上传 FBI 导出的 Excel 文件，系统自动解析并更新看板数据</p>
+    <p style="font-size:10px;color:#64748b;margin-bottom:12px;">预期列：date, city, district, industry_level1, industry, product</p>
+    <div id="dropZone" style="border:2px dashed #334155;border-radius:8px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;">
+      <div style="font-size:28px;color:#475569;margin-bottom:8px;">&#128196;</div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:4px;">拖拽文件到此处，或 <span style="color:#3b82f6;text-decoration:underline;">点击选择文件</span></div>
+      <div style="font-size:10px;color:#475569;">支持 .xlsx / .xls / .csv</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+    </div>
+    <div id="fileInfo" style="display:none;margin-top:10px;padding:10px 12px;background:#0f1923;border:1px solid #334155;border-radius:6px;">
+      <span style="font-size:11px;color:#10b981;">&#10003;</span>
+      <span id="fileName" style="font-size:12px;color:#e2e8f0;margin:0 8px;"></span>
+      <button id="btnRemoveFile" style="background:none;border:none;color:#64748b;font-size:14px;cursor:pointer;float:right;">&times;</button>
+    </div>
+    <div style="margin-top:14px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">操作密码</label>
+      <input type="password" id="uploadPassword" placeholder="请输入密码以授权更新" style="width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:#0f1923;color:#e2e8f0;font-size:12px;box-sizing:border-box;margin-bottom:10px;">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="btnParsePaste" style="flex:1;padding:10px;border-radius:6px;border:none;background:#1e40af;color:#fff;font-size:13px;cursor:pointer;font-weight:500;">解析并更新看板</button>
+    </div>
+    <p id="parseStatus" style="font-size:11px;color:#64748b;margin-top:8px;"></p>
+  </div>
+</div>
+
+<!-- 关键词查询弹窗 -->
+<div id="keywordModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a2634;border:1px solid #2d3e50;border-radius:12px;width:600px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column;padding:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="color:#fff;font-size:15px;">售卖类目关键词查询</h3>
+      <button id="btnCloseKeyword" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">&times;</button>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;margin-bottom:10px;">输入类目名称（支持模糊搜索），查看该类目下的所有售卖关键词</p>
+    <input type="text" id="keywordSearchInput" placeholder="输入类目名称，如：火锅、小吃、烧烤..." style="width:100%;padding:10px 12px;border:1px solid #334155;border-radius:6px;background:#0f1923;color:#e2e8f0;font-size:13px;box-sizing:border-box;margin-bottom:12px;">
+    <div id="keywordResults" style="flex:1;overflow-y:auto;max-height:50vh;"></div>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="filter-group">
+    <span class="filter-label">省份:</span>
+    <div class="search-select" id="ssProvince">
+      <input type="text" placeholder="全部省份" data-value="">
+      <span class="ss-clear">&times;</span>
+      <div class="ss-dropdown"></div>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">城市:</span>
+    <div class="search-select" id="ssCity">
+      <input type="text" placeholder="全部城市" data-value="">
+      <span class="ss-clear">&times;</span>
+      <div class="ss-dropdown"></div>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">类目:</span>
+    <div class="search-select wide" id="ssCategory">
+      <input type="text" placeholder="全部类目" data-value="">
+      <span class="ss-clear">&times;</span>
+      <div class="ss-dropdown"></div>
+    </div>
+  </div>
+  <button id="btnTourism" class="tourism-btn" title="点击只看旅游热门城市">✨ 旅游热门</button>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot dot-green"></span>&lt;30%</div>
+    <div class="legend-item"><span class="legend-dot dot-yellow"></span>30-60%</div>
+    <div class="legend-item"><span class="legend-dot dot-orange"></span>60-80%</div>
+    <div class="legend-item"><span class="legend-dot dot-red"></span>&gt;80%</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="map-panel">
+    <div id="mapChart" style="width:100%;height:100%;"></div>
+  </div>
+  <div class="side-panel">
+    <div class="stats-dim" id="statsDim" style="display:flex;gap:4px;margin-bottom:6px;font-size:10px;">
+      <span class="stats-dim-btn active" data-dim="all">全量</span>
+      <span class="stats-dim-btn" data-dim="tourism">旅游城市</span>
+      <span class="stats-dim-btn" data-dim="key">重点类目</span>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val blue" id="statTotal">--</div><div class="stat-label">总可售坑位</div></div>
+      <div class="stat-card"><div class="stat-val red" id="statOccupied">--</div><div class="stat-label">D+30已占</div></div>
+      <div class="stat-card"><div class="stat-val green" id="statAvail">--</div><div class="stat-label">剩余可售</div></div>
+      <div class="stat-card"><div class="stat-val orange" id="statRate">--</div><div class="stat-label">整体占量率</div></div>
+      <div class="stat-card"><div class="stat-val purple" id="statCities">--</div><div class="stat-label">有占量城市</div></div>
+      <div class="stat-card"><div class="stat-val" id="statCats">--</div><div class="stat-label">有占量类目</div></div>
+    </div>
+    <div class="detail-header">
+      <h3 id="detailTitle">点击地图城市查看详情</h3>
+      <div class="city-info" id="detailSubtitle">选择城市后展示占量明细与可售空位</div>
+    </div>
+    <div class="detail-tabs" id="detailTabs" style="display:none;">
+      <div class="detail-tab active" data-tab="all">全部明细</div>
+      <div class="detail-tab" data-tab="unoccupied">未占类目</div>
+      <div class="detail-tab" data-tab="avail30">D+30可售</div>
+      <div class="detail-tab" id="btnKeyOnly" style="margin-left:auto;background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px;cursor:pointer;border-radius:3px;">重点</div>
+    </div>
+    <div class="detail-content" id="detailContent">
+      <div class="detail-placeholder">点击左侧地图城市气泡<br>查看该城市占量明细与空余坑位</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 城市→省份映射 ====================
+var CITY_PROVINCE = {"北京":"北京","上海":"上海","广州":"广东","深圳":"广东","杭州":"浙江","成都":"四川","武汉":"湖北","南京":"江苏","重庆":"重庆","西安":"陕西","苏州":"江苏","天津":"天津","长沙":"湖南","郑州":"河南","青岛":"山东","济南":"山东","合肥":"安徽","福州":"福建","厦门":"福建","昆明":"云南","大连":"辽宁","宁波":"浙江","无锡":"江苏","佛山":"广东","东莞":"广东","沈阳":"辽宁","哈尔滨":"黑龙江","石家庄":"河北","南昌":"江西","贵阳":"贵州","淄博":"山东","秦皇岛":"河北","日照":"山东","湖州":"浙江","淮安":"江苏","太原":"山西","南宁":"广西","温州":"浙江","泉州":"福建","常州":"江苏","绍兴":"浙江","烟台":"山东","潍坊":"山东","兰州":"甘肃","乌鲁木齐":"新疆","徐州":"江苏","临沂":"山东","洛阳":"河南","三亚":"海南","万宁":"海南","上饶":"江西","东方":"海南","东营":"山东","中卫":"宁夏","中山":"广东","临汾":"山西","丹东":"辽宁","丽水":"浙江","丽江":"云南","乐山":"四川","九江":"江西","云浮":"广东","保定":"河北","保山":"云南","信阳":"河南","儋州":"海南","六安":"安徽","兴安盟":"内蒙古","凉山":"四川","北海":"广西","十堰":"湖北","南通":"江苏","南平":"福建","唐山":"河北","商丘":"河南","嘉兴":"浙江","四平":"吉林","固原":"宁夏","大同":"山西","大理":"云南","天门":"湖北","威海":"山东","宁德":"福建","安庆":"安徽","安顺":"贵州","宜宾":"四川","宜昌":"湖北","宣城":"安徽","岳阳":"湖南","崇左":"广西","巴彦淖尔":"内蒙古","庆阳":"甘肃","延边":"吉林","开封":"河南","张家口":"河北","张家界":"湖南","张掖":"甘肃","德宏":"云南","德州":"山东","恩施":"湖北","惠州":"广东","扬州":"江苏","承德":"河北","拉萨":"西藏","揭阳":"广东","柳州":"广西","桂林":"广西","梅州":"广东","武威":"甘肃","毕节":"贵州","汉中":"陕西","汕头":"广东","汕尾":"广东","江门":"广东","池州":"安徽","沧州":"河北","河源":"广东","泰安":"山东","泰州":"江苏","海口":"海南","淮北":"安徽","淮南":"安徽","清远":"广东","湘潭":"湖南","湘西":"湖南","湛江":"广东","漳州":"福建","潜江":"湖北","潮州":"广东","澳门":"澳门","玉溪":"云南","珠海":"广东","甘孜":"四川","白山":"吉林","百色":"广西","益阳":"湖南","盐城":"江苏","盘锦":"辽宁","眉山":"四川","绥化":"黑龙江","绵阳":"四川","肇庆":"广东","自贡":"四川","舟山":"浙江","芜湖":"安徽","荆州":"湖北","菏泽":"山东","葫芦岛":"辽宁","蚌埠":"安徽","衡水":"河北","衡阳":"湖南","衢州":"浙江","襄阳":"湖北","西双版纳":"云南","西宁":"青海","赣州":"江西","赤峰":"内蒙古","运城":"山西","连云港":"江苏","迪庆":"云南","通辽":"内蒙古","邢台":"河北","邯郸":"河北","邵阳":"湖南","郴州":"湖南","酒泉":"甘肃","银川":"宁夏","锦州":"辽宁","长春":"吉林","防城港":"广西","阳江":"广东","阿坝":"四川","陵水":"海南","雅安":"四川","鞍山":"辽宁","韶关":"广东","香港":"香港","鹰潭":"江西","黄山":"安徽","黔南":"贵州","齐齐哈尔":"黑龙江","呼伦贝尔":"内蒙古","呼和浩特":"内蒙古","景德镇":"江西","晋中":"山西","晋城":"山西","普洱":"云南"};
+
+// ==================== 品广可售库存配置数据 ====================
+var INV_CATS = ["美食;东南亚菜","美食;中餐","美食;中餐;上海菜","美食;中餐;东北菜","美食;中餐;云南菜","美食;中餐;内蒙菜","美食;中餐;北京菜","美食;中餐;台湾菜","美食;中餐;天津菜","美食;中餐;山西菜","美食;中餐;川菜","美食;中餐;广西菜","美食;中餐;徽菜","美食;中餐;江浙菜","美食;中餐;江西菜","美食;中餐;河北菜","美食;中餐;河南菜","美食;中餐;海南菜","美食;中餐;湖北菜","美食;中餐;湘菜","美食;中餐;粤菜","美食;中餐;茶餐厅","美食;中餐;西北菜","美食;中餐;西藏菜","美食;中餐;贵州菜","美食;中餐;闽菜","美食;中餐;香港菜","美食;中餐;鲁菜","美食;小吃快餐","美食;小吃快餐;三鲜豆皮","美食;小吃快餐;元宵","美食;小吃快餐;凉皮","美食;小吃快餐;包子","美食;小吃快餐;北京小吃","美食;小吃快餐;川味小吃","美食;小吃快餐;广式点心","美食;小吃快餐;抄手","美食;小吃快餐;汤","美食;小吃快餐;汤圆","美食;小吃快餐;烧麦","美食;小吃快餐;特色小吃","美食;小吃快餐;米粉","美食;小吃快餐;米线","美食;小吃快餐;粥","美食;小吃快餐;羊肉泡馍","美食;小吃快餐;肉夹馍","美食;小吃快餐;肠粉","美食;小吃快餐;臭豆腐","美食;小吃快餐;西式快餐","美食;小吃快餐;锅贴","美食;小吃快餐;面馆","美食;小吃快餐;饭","美食;小吃快餐;饺子","美食;小吃快餐;饼","美食;小吃快餐;馄饨","美食;小吃快餐;馒头","美食;小吃快餐;驴肉火烧","美食;小吃快餐;麻辣拌","美食;干锅","美食;日本料理","美食;水产海鲜","美食;火锅","美食;火锅;串串香","美食;火锅;其他","美食;火锅;打边炉","美食;火锅;海鲜火锅","美食;火锅;涮羊肉","美食;火锅;潮汕火锅","美食;火锅;火锅鸡","美食;火锅;牛肉火锅","美食;火锅;重庆火锅","美食;烧烤","美食;熟食","美食;甜品店","美食;糕点/烘焙","美食;自助餐","美食;自助餐;日式自助","美食;自助餐;自助快餐","美食;自助餐;自助海鲜","美食;自助餐;自助火锅","美食;自助餐;自助烤肉","美食;西餐","美食;西餐;俄国菜","美食;西餐;意大利菜","美食;西餐;牛排","美食;韩国料理","美食;饮品","美食;饮品;咖啡","美食;饮品;奶茶/茶饮"];
+
+// 类目→售卖关键词映射
+var CAT_KEYWORDS = {"美食;东南亚菜":["泰国菜","印度风味","泰餐","南洋","冬阴功","泰式热","泰式热炒","越南菜","东南亚菜"],"美食;干锅":["干锅"],"美食;糕点/烘焙":["糕饼","烘焙","生日蛋糕","蛋糕烘焙","蛋糕店","蛋糕","糕点","鲜花饼","曲奇","面包","面包店","点心","蛋挞","糕点店","蝴蝶酥","糕点/烘焙","西式糕点","凤梨酥","点心店","巧克力","菠萝包","烘干","糕饼店","焙子","糕","桂花糕","中式糕点","绿豆饼"],"美食;韩国料理":["韩国菜","韩式烤肉","紫菜包饭","韩国烤肉","延吉冷面","部队火锅","韩国炸酱面","石锅饭","韩国料理","韩餐","参鸡汤"],"美食;日本料理":["日式料理","寿司","鱼生","烧鸟","寿喜烧","居酒屋","回转寿司","日式拉面","寿司店","料理","刺身","寿喜锅","日式烤肉","三文鱼","omakase","生鱼片","鱼生店","日料","日本料理","日式","美食日料","日料店"],"美食;烧烤":["烧烤","烤肉店","炙子烤肉","烤串","烤肉","新疆烧烤","东北烧烤","羊肉串","齐齐哈尔烤肉","锦州烧烤","淄博烧烤","烤全羊","烤羊腿","美食烤肉","燒烤","海鲜烧烤","夜市烧烤","现烤牛肉干","炭火烤肉","新疆羊肉串","烤","火盆烧烤","泥炉烤肉"],"美食;熟食":["熟食店","熟食","卤菜","凉菜","卤味","鸭脖","卤肉","凉拌菜","卤肉店","酱板鸭","卤鹅","卤菜店","熏酱","熏肉","熟肉","鸭货","热卤","鸭","衢州鸭头","鸭头","卤煮"],"美食;水产海鲜":["大闸蟹","美蛙鱼头","鱼头","石锅鱼","剁椒鱼头","纸包鱼","啤酒鱼","水煮鱼","肉蟹煲","烤鱼","海鲜","小龙虾","鱼","龙虾","虾","牛蛙","开海","蛙","生蚝","蟹","蚝","海鲜市场","水产海鲜","水产海鲜店","海鲜批发市场","水产","水产海鲜市场","冻品","海鲜批发","淡水鱼"],"美食;甜品店":["甜品","清补凉","冰粉","冰激凌","烧仙草","刨冰","冰糕","雪糕","冰棍","雪糕店","早茶","甜品店","茶点","甜点","冰淇淋","广式茶点"],"美食;西餐":["西餐","西餐厅","葡国菜"],"美食;西餐;俄国菜":["俄国餐馆","俄餐","俄罗斯餐厅","俄式餐厅"],"美食;西餐;法国菜":["法式餐馆"],"美食;西餐;牛排":["牛排","牛扒店","西餐牛排","美食西餐"],"美食;西餐;意大利菜":["意式菜","意大利面","意面"],"美食;小吃快餐":["快餐厅","小吃","小吃快餐","中式快餐","夜市小吃","饭","快餐","螺蛳粉"],"美食;小吃快餐;包子":["包子","小笼包","包子店","包子铺","灌汤包","汤包","水煎包","生煎包","煎包","蟹黄汤包"],"美食;小吃快餐;北京小吃":["老北京炸酱面","老北京卤煮","北京炸酱面","北京卤煮","老北京爆肚","北京小吃","炒肝","爆肚"],"美食;小吃快餐;饼":["烧饼","煎饼","煎饼果子","饼","酱香饼","鸡蛋灌饼","香河肉饼","菜煎饼","矮子馅饼","杂粮煎饼","馅饼","肉饼","大饼","火烧"],"美食;小吃快餐;肠粉":["肠粉","石磨肠粉","广东肠粉"],"美食;小吃快餐;抄手":["抄手","龙抄手"],"美食;小吃快餐;臭豆腐":["臭豆腐","长沙臭豆腐"],"美食;小吃快餐;川味小吃":["老妈兔头","川味小吃","钵钵鸡","兔头","蹄花","冒菜"],"美食;小吃快餐;饭":["猪脚饭","木桶饭","煲仔饭","黄焖鸡米饭","盖饭","炒饭","拌饭","盖浇饭","手抓饭","排骨米饭","甏肉干饭","竹筒饭","豆花饭","饭团","卤肉饭"],"美食;小吃快餐;广式点心":["广式早茶","美食早茶","广式点心"],"美食;小吃快餐;锅贴":["锅贴"],"美食;小吃快餐;馄饨":["馄饨"],"美食;小吃快餐;饺子":["饺子","水饺","饺子馆","手工水饺","蒸饺","钟水饺","煎饺","饺","鲅鱼饺子"],"美食;小吃快餐;凉皮":["凉皮","陕西凉皮","凉皮店"],"美食;小吃快餐;驴肉火烧":["驴肉火烧","驴肉","河间驴肉火烧","驴肉汤","保定驴肉火烧"],"美食;小吃快餐;麻辣拌":["麻辣烫","麻辣拌","东北麻辣烫","重庆麻辣烫","砂锅麻辣烫","老式麻辣烫","天水麻辣烫"],"美食;小吃快餐;馒头":["馒头","馒头店"],"美食;小吃快餐;米粉":["米粉","炒米粉","米粉店","粉店","牛肉粉","桂林米粉","粉","螺丝粉","螺蛳粉店","炒螺蛳粉","拌粉","炒粉","汤粉"],"美食;小吃快餐;米线":["米线","过桥米线","小锅米线","米线店"],"美食;小吃快餐;面馆":["面馆","面","牛肉面","面条","手擀面","拌面","热干面","蟹黄面","沙茶面","刀削面","烩面","拉面","炸酱面","海鲜面","削面","兰州拉面","焖面","粉面","莜面","兰州牛肉面"],"美食;小吃快餐;肉夹馍":["肉夹馍"],"美食;小吃快餐;三鲜豆皮":["豆皮","三鲜豆皮"],"美食;小吃快餐;烧麦":["烧卖","烧麦","稍麦"],"美食;小吃快餐;汤":["胡辣汤","牛肉汤","羊汤","羊肉汤","鸭血粉丝汤","瓦罐汤","鸭血粉丝","汤","藕汤","羊汤馆","汤饭","炖汤","鸡汤","羊杂汤"],"美食;小吃快餐;汤圆":["汤圆"],"美食;小吃快餐;特色小吃":["特色小吃"],"美食;小吃快餐;西式快餐":["汉堡","披萨","炸鸡","炸串","汉堡包","汉堡店","pizza","披萨店","三明治","薯条","Pizza","披萨自助"],"美食;小吃快餐;羊肉泡馍":["羊肉泡馍","泡馍"],"美食;小吃快餐;元宵":["元宵"],"美食;小吃快餐;粥":["粥","粥店","粥铺","砂锅粥","美食粥","海鲜粥","潮汕粥"],"美食;饮品":["冷饮店","饮品","饮料","茉莉花茶","煮茶"],"美食;饮品;咖啡":["咖啡","咖啡奶茶","咖啡厅","Coffee","咖啡廳","狗咖","咖啡店","咖啡馆","coffee","cafe","Cafe","cat cafe","Cat cafe"],"美食;饮品;奶茶/茶饮":["奶茶","柠檬茶","奶茶/茶饮","凉茶店","茶饮","珍珠奶茶","奶茶店","凉茶"],"美食;中餐":["美食","饭店","Food","中餐","餐厅","吃饭","餐饮","餐馆","中餐厅","饭馆","午餐","酒楼","吃饭的地方","餐饮店","菜馆","中餐馆","餐廳","맛있는 음식","小饭店","酒家","晚餐","炒菜馆","кулинарн","Restaurant","restaurant","美食餐厅","商务宴请","聚餐","宴请","大饭店","食府","家常菜馆","饮食"],"美食;中餐;澳门菜":["澳门菜"],"美食;中餐;北京菜":["北京菜","烤鸭","北京烤鸭","烤鸭店","片皮烤鸭","老北京烤鸭","北京烤鸭店","北京片皮烤鸭","烤鴨","南京烤鸭"],"美食;中餐;茶餐厅":["茶餐厅","广式茶餐厅","港式茶餐厅"],"美食;中餐;川菜":["四川菜","川渝","重庆菜","川味","川香","重庆川菜馆","重庆菜馆","川菜","川菜馆","江湖菜","美食川菜","盐帮菜"],"美食;中餐;东北菜":["东北菜馆","东北饭店","铁锅炖","铁锅炖大鹅","锅包肉","杀猪菜","东北菜","地锅"],"美食;中餐;广西菜":["广西菜"],"美食;中餐;贵州菜":["贵州酸汤火锅","贵州菜","贵州酸汤","贵州餐厅"],"美食;中餐;海南菜":["海南鸡饭","海南菜","海南椰子鸡"],"美食;中餐;河北菜":["河北菜"],"美食;中餐;河南菜":["河南菜","河南烩面","豫菜"],"美食;中餐;湖北菜":["鄂菜","湖北菜"],"美食;中餐;徽菜":["徽菜馆","徽菜","臭鳜鱼","安徽菜"],"美食;中餐;江西菜":["江西小炒","赣菜","江西菜","江西饭店","江西菜馆"],"美食;中餐;江浙菜":["淮扬菜","江浙菜","浙菜","杭帮菜","西湖醋鱼"],"美食;中餐;鲁菜":["鲁菜","山东菜","博山菜","鲁菜馆"],"美食;中餐;闽菜":["闽南菜","闽菜馆","闽菜"],"美食;中餐;内蒙菜":["内蒙菜","蒙菜","蒙古菜"],"美食;中餐;山西菜":["山西菜","晋味"],"美食;中餐;上海菜":["上海菜","本帮菜"],"美食;中餐;台湾菜":["台湾菜"],"美食;中餐;天津菜":["天津菜","天津卫","津沽","津菜"],"美食;中餐;西北菜":["西北菜","陕西菜","陕菜"],"美食;中餐;西藏菜":["藏餐","新疆菜","西藏菜"],"美食;中餐;香港菜":["港式","香港菜"],"美食;中餐;湘菜":["湖南菜","湖南土菜馆","湖南小碗菜","川湘菜馆","美食湘菜","湘菜","湘菜馆","美食湘菜馆","川湘菜","湘","湖南菜馆","湘味","香菜馆"],"美食;中餐;粤菜":["广东菜","广式","广味","粤菜餐厅","粤菜","潮州菜","顺德菜","烧腊","潮汕菜","客家菜","美食粤菜","粤式茶点","乳鸽","粤菜馆","潮汕美食","湛江菜"],"美食;中餐;云南菜":["云南菜"],"美食;自助餐":["自助餐","自助","素食自助","美食自助","美食自助餐","牛排自助","海鲜烤肉自助","自助餐厅","日式自助","烤涮一体自助","生蚝自助","铁板烧自助","自助西餐"],"美食;自助餐;日式自助":["日料自助","自助日料"],"美食;自助餐;自助海鲜":["海鲜自助","自助海鲜","海鲜自助餐"],"美食;自助餐;自助火锅":["自助火锅","自助小火锅","火锅自助"],"美食;自助餐;自助烤肉":["自助烤肉","烤肉自助","自助烧烤","烧烤自助"],"美食;自助餐;自助快餐":["自助快餐","自选快餐","快餐自助"],"美食;火锅;潮汕火锅":["潮汕牛肉火锅","潮汕牛肉","潮汕火锅"],"美食;火锅;重庆火锅":["重庆火锅","老火锅","重庆老火锅"],"美食;火锅;串串香":["串串","串串香","串串火锅","火锅串串"],"美食;火锅;打边炉":["打边炉"],"美食;火锅;海鲜火锅":["粥底火锅","海鲜火锅"],"美食;火锅;火锅鸡":["火锅鸡"],"美食;火锅;牛肉火锅":["牛肉火锅"],"美食;火锅;其他":["火锅店","火锅","美食火锅","火鍋","野生菌火锅","菌子火锅","朝天锅","芋儿鸡","火锅食材","糟粕醋火锅","卤水火锅","菌菇火锅","牛蛙火锅","螺蛳粉火锅","兔火锅","菌火锅"],"美食;火锅;涮羊肉":["涮肉","铜锅涮肉","涮羊肉","老北京涮肉","老北京铜锅涮肉","老北京火锅","铜锅涮","涮锅","羊肉火锅","美食涮肉","刷羊肉","北京涮羊肉","北京涮肉","刷肉","老北京涮羊肉","铜火锅","老北京铜火锅","清真涮肉","铜锅涮羊肉"],"美食;火锅;四川火锅":["四川火锅","成都火锅"],"美食;火锅;小火锅":["旋转小火锅","24小时火锅","小火锅"],"美食;火锅;羊蝎子火锅":["羊蝎子"],"美食;火锅;椰子鸡":["椰子鸡"],"美食;火锅;鱼火锅":["鱼火锅"],"美食;火锅;猪肚鸡":["猪肚鸡"]};
+
+// ==================== 暑期旅游热门城市 ====================
+var TOURISM_CITIES = ["北京","上海","成都","广州","重庆","杭州","西安","深圳","长沙","青岛","南京","武汉","苏州","天津","郑州","三亚","大连","烟台","威海","秦皇岛","日照","北海","厦门","泉州","舟山","防城港","海口","万宁","陵水","珠海","湛江","连云港","温州","阳江","昆明","贵阳","大理","丽江","西宁","承德","张家口","呼伦贝尔","哈尔滨","长春","九江","黄山","恩施","安顺","西双版纳","迪庆","赤峰","阿坝","甘孜","张家界","桂林","清远","洛阳","开封","淄博","景德镇","大同","太原","福州","南昌","徐州","芜湖","乌鲁木齐","拉萨","兰州","银川","沈阳","丹东"];
+
+// ==================== 地域特色美食映射 ====================
+var PROVINCE_SPECIALTY = {"山东":{cats:["美食;中餐;鲁菜"],keywords:["鲁菜","山东菜","博山菜"]},"四川":{cats:["美食;中餐;川菜","美食;火锅;串串香"],keywords:["川菜","川渝","串串香"]},"湖南":{cats:["美食;中餐;湘菜","美食;小吃快餐;臭豆腐"],keywords:["湖南菜","长沙臭豆腐"]},"广东":{cats:["美食;中餐;粤菜","美食;小吃快餐;广式点心","美食;小吃快餐;肠粉","美食;火锅;潮汕火锅"],keywords:["粤菜","广式早茶","肠粉","潮汕牛肉"]},"福建":{cats:["美食;中餐;闽菜"],keywords:["闽菜"]},"安徽":{cats:["美食;中餐;徽菜"],keywords:["徽菜"]},"浙江":{cats:["美食;中餐;江浙菜"],keywords:["江浙菜"]},"江苏":{cats:["美食;中餐;江浙菜"],keywords:["江浙菜"]},"辽宁":{cats:["美食;中餐;东北菜","美食;烧烤"],keywords:["东北菜馆","铁锅炖","烧烤"]},"吉林":{cats:["美食;中餐;东北菜","美食;韩国料理"],keywords:["东北菜馆","铁锅炖","延吉冷面"]},"黑龙江":{cats:["美食;中餐;东北菜"],keywords:["东北菜馆","铁锅炖","锅包肉"]},"云南":{cats:["美食;中餐;云南菜","美食;小吃快餐;米线"],keywords:["过桥米线","云南菜"]},"贵州":{cats:["美食;中餐;贵州菜"],keywords:["贵州菜","酸汤鱼"]},"甘肃":{cats:["美食;中餐;西北菜","美食;小吃快餐;面馆"],keywords:["牛肉面","西北菜"]},"陕西":{cats:["美食;中餐;西北菜","美食;小吃快餐;肉夹馍","美食;小吃快餐;羊肉泡馍"],keywords:["肉夹馍","羊肉泡馍"]},"宁夏":{cats:["美食;中餐;西北菜"],keywords:["西北菜"]},"新疆":{cats:["美食;中餐;西北菜","美食;烧烤"],keywords:["西北菜","烤串"]},"北京":{cats:["美食;中餐;北京菜","美食;小吃快餐;北京小吃","美食;火锅;涮羊肉"],keywords:["老北京炸酱面","老北京卤煮","涮羊肉"]},"上海":{cats:["美食;中餐;上海菜"],keywords:["上海菜","本帮菜"]},"天津":{cats:["美食;中餐;天津菜"],keywords:["天津菜"]},"山西":{cats:["美食;中餐;山西菜"],keywords:["山西菜"]},"河北":{cats:["美食;中餐;河北菜","美食;小吃快餐;驴肉火烧"],keywords:["驴肉火烧","河北菜"]},"河南":{cats:["美食;中餐;河南菜"],keywords:["河南菜"]},"湖北":{cats:["美食;中餐;湖北菜","美食;小吃快餐;三鲜豆皮"],keywords:["湖北菜","豆皮","三鲜豆皮"]},"海南":{cats:["美食;中餐;海南菜","美食;水产海鲜"],keywords:["海南菜","海鲜"]},"西藏":{cats:["美食;中餐;西藏菜"],keywords:["西藏菜"]},"广西":{cats:["美食;中餐;广西菜","美食;小吃快餐;米粉"],keywords:["广西菜","米粉","螺蛳粉"]},"江西":{cats:["美食;中餐;江西菜"],keywords:["江西菜"]},"内蒙古":{cats:["美食;中餐;内蒙菜","美食;火锅;涮羊肉"],keywords:["内蒙菜","涮羊肉"]},"重庆":{cats:["美食;火锅;重庆火锅","美食;火锅;串串香"],keywords:["重庆火锅","老火锅","串串香"]},"青海":{cats:["美食;中餐;西北菜"],keywords:["西北菜"]}};
+
+var CITY_SPECIALTY = {"重庆":{cats:["美食;火锅;重庆火锅","美食;火锅;串串香"],keywords:["重庆火锅","老火锅","串串"]},"延边":{cats:["美食;韩国料理"],keywords:["延吉冷面","韩式烤肉","紫菜包饭"]},"潮州":{cats:["美食;火锅;潮汕火锅"],keywords:["潮汕牛肉火锅","潮汕牛肉"]},"汕头":{cats:["美食;火锅;潮汕火锅"],keywords:["潮汕牛肉火锅","潮汕牛肉"]},"西安":{cats:["美食;小吃快餐;肉夹馍","美食;小吃快餐;羊肉泡馍","美食;中餐;西北菜"],keywords:["肉夹馍","羊肉泡馍","西北菜"]},"兰州":{cats:["美食;小吃快餐;面馆","美食;中餐;西北菜"],keywords:["牛肉面","兰州拉面"]},"长沙":{cats:["美食;中餐;湘菜","美食;小吃快餐;臭豆腐"],keywords:["湖南菜","长沙臭豆腐"]},"青岛":{cats:["美食;中餐;鲁菜","美食;水产海鲜"],keywords:["鲁菜","海鲜"]},"大连":{cats:["美食;中餐;东北菜","美食;水产海鲜"],keywords:["东北菜","海鲜"]},"烟台":{cats:["美食;中餐;鲁菜","美食;水产海鲜"],keywords:["鲁菜","海鲜"]},"威海":{cats:["美食;中餐;鲁菜","美食;水产海鲜"],keywords:["鲁菜","海鲜"]},"三亚":{cats:["美食;水产海鲜","美食;中餐;海南菜"],keywords:["海鲜","海南菜"]},"厦门":{cats:["美食;中餐;闽菜","美食;水产海鲜"],keywords:["闽菜","海鲜"]},"舟山":{cats:["美食;水产海鲜"],keywords:["海鲜"]},"日照":{cats:["美食;中餐;鲁菜","美食;水产海鲜"],keywords:["鲁菜","海鲜"]},"秦皇岛":{cats:["美食;水产海鲜"],keywords:["海鲜"]},"北海":{cats:["美食;水产海鲜","美食;中餐;广西菜"],keywords:["海鲜","广西菜"]}};
+
+function getSpecialty(city){
+  if(CITY_SPECIALTY[city]) return CITY_SPECIALTY[city];
+  var province = CITY_PROVINCE[city];
+  if(province && PROVINCE_SPECIALTY[province]) return PROVINCE_SPECIALTY[province];
+  return null;
+}
+function isTourismCity(city){ return TOURISM_CITIES.indexOf(city) >= 0; }
+
+var KEY_CAT_KEYWORDS = ["水产海鲜","烧烤","中餐","火锅","特色菜系","西餐","自助餐","小吃快餐"];
+function isKeyCategory(cat){ return KEY_CAT_KEYWORDS.some(function(k){ return cat.indexOf(k) >= 0; }); }
+
+var INV_MAP = {"南宁":"1fbeffffffdee6d99ff6c5b","太原":"1fbeffffbfdffa7d9f9775b","厦门":"07bf36e4ff9ff6f9ffb74d9","西安":"17ff37f4ffbffffdffd777d","长春":"1ffffffffffffa799b9745b","邯郸":"1f3effffffdfea798b9e44a","四平":"1c3efd4dbfd0e211008044a","兴安盟":"183ef84dbbd0ea11008044a","开封":"1f3effcffffffa59039644a","芜湖":"1d3effcfbff7e259039744a","韶关":"1d3efeeda3d4e251039044a","沧州":"1f3effcffffffa798b9654a","河源":"1d3efecdb3d4e251039444b","唐山":"1f3effefbffffa798b9644a","宜昌":"1d3effcdafd4e25303c044a","东莞":"1fbfffffffdff7f9dff74db","张家口":"1f3efdcfbfd3ea79038044a","崇左":"1c18f809a1d4a211038040b","泰安":"1f3effcfbfd7e259838244a","郑州":"1fbf37f4ffbffefdbfd7559","毕节":"1d1cfe4de7d4e251108044a","昆明":"1f3effffffdff7599f9645b","威海":"1f3effefbff7e2598b9044a","宁德":"1d3efeedabd4e251039444a","珠海":"1f3efeffbfdfe2d91ff445b","中卫":"1818f8492bd0c219008044a","潍坊":"1f3effffbffff2798b9444a","杭州":"07ff37f4ffbffff9fff74dd","丽江":"1c3cfe4dbbd0e251038045a","岳阳":"1d3efecdafdce253038044a","北京":"07ff37f4ffbffff9fff77fd","儋州":"180cf849a1d4e251038040a","商丘":"1d3effcfffffe279039644a","福州":"1fbfffefbfdff6fd7fd745b","三亚":"1f3efeedbfdee2d90bb444b","百色":"1d1efec9a3d4e211038044a","潮州":"1d3efeedebd4e2d103b444b","晋中":"1f3effcfbfd3ea510b9664a","常州":"1f3fffffffffe2591f9745b","连云港":"1f3efffdbff6e259039644a","南通":"1f3effffffffe6d99b9744b","惠州":"1fbeffffffdfe6f99ff745b","郴州":"1d3efecdafdce251038044a","秦皇岛":"1f3efddfbfd6ea590b8044a","天津":"1fff37f4ffbffefdbff77d9","中山":"1f3efeffbfdee2d91ff445b","阿坝":"1c08fe4d01d0e2510800442","池州":"181ef849aff0e211008544a","乐山":"1d3efecfebd4ef51138044a","鹰潭":"191af8c9a7d4a211000444a","柳州":"1d3efeedafdee2511390c4b","银川":"1f3effefffd7ea591f9244b","承德":"1d3efdcdbff2ea51008044a","嘉兴":"1f3effeffffffa799f9745b","揭阳":"1f3efeedbfd4e25103b444b","武汉":"17bfb7f5ffbffffbfff7459","大连":"1f7effffffffdff759df9e5b","保定":"1f3effffbfdfe679039644a","合肥":"1fbfffffbfffe6599f9645b","济南":"1f3effffbffff6798b9645b","成都":"17ff37f4ffbffffff7d777d","深圳":"1fbfffffffdff7fddff74db","贵阳":"1f3effffffd7e6d91b9645b","清远":"1d3efeefabd4e2d103b444b","石家庄":"1f3effffffdfea798b9e44a","梅州":"1d3efe6da3d4e2d103b444b","黔南":"1d1cfe4de7d4e251108044a","赤峰":"1f3efdefbfd3ea510b8064a","汕尾":"1d3efeedebd0e25103b444b","白山":"1c3efd4dbbd0ea11008044a","绥化":"1c3efd4dbbd0ea11008044a","张家界":"1d3efecfafdce251038044a","宜宾":"1d3efecfabd4e751138044a","南昌":"1f3effffffdff6799f9745b","普洱":"1c3cfe4dabdce251038045a","安庆":"1d3efecfbfd4e211038044a","漳州":"1d3efeedabd4e2d103b444b","南京":"1fff37f5ffbffff9fff745d","扬州":"1d3efffdbfffe259039744a","汕头":"1f3efeedbfd4e2d103b444b","襄阳":"1d3effcdabd4e251038044a","绍兴":"1f3effedfffff6799f9745b","丽水":"1d3efeedabd4e251038044a","运城":"1d3effcfbbd3e251039044a","盐城":"1d3efffdbfffe259039744a","淮安":"1d3efffdbfffe6d9039744a","蚌埠":"1d3effcdbff4e259039644a","宣城":"1d3effcfaff4e219038544a","菏泽":"1f3effffbffff6798b9244a","洛阳":"1f3effffbffffa598b9644a","温州":"1f3effedfffff6f99f9745b","信阳":"1d3effcfbfffe279039644a","衡阳":"1d3efecdafdce253038044a","临汾":"1d3effcfbbd3ea510b8044a","日照":"1f3effcfbfd7e2598b9044a","淄博":"1f3effffbffff2798b9444a","南平":"1d3efeedabd4e251039444a","鞍山":"1d3efd5dbfd2ea11009044a","上饶":"1d3effcfafd4e211038744a","保山":"1c3cfe4dabdce211038045a","大理":"1c3cfe4de7d0e251038045a","迪庆":"1c08f84d01d0a211008044a","庆阳":"1818f8692bd0e211008044a","六安":"1d3efdcdbff4e219038044a","呼伦贝尔":"1c3efd4dbbd0ea11008044a","黄山":"1d3efecfaff0e211008444a","泉州":"1fbfffefbbdfe6f97fd745b","葫芦岛":"1d3efd5dbfd2ea11008044a","益阳":"1d3efecdafdce251038044a","固原":"1818f8492bd0c211008044a","晋城":"1d3efdcfbbd0ea510b8064a","德宏":"1c08f84d01d0a211008044a","上海":"07ff37f4ffbffff9fff77fd","安顺":"1d1cfe4de7d4e251108044a","湛江":"1d3efeefabd4e2d103b444b","广州":"1fbfffffffdff7fddff74db","北海":"1d3efeedabd4e2d103b444b","九江":"1d3efecfafd4e211038544a","邵阳":"1d3efecfafdce251038044a","临沂":"1f3effcfbffff2598b9644a","丹东":"1d3efd4dbbd0ea11008044a","衢州":"1d3efeedabd4e251038444a","苏州":"1fbfffffffdff7f9dff745b","海口":"1f3efeedbfdee2d90bb444b","桂林":"1d3efeedafdee251038044b","西双版纳":"1c08f84d01d0a211008045a","云浮":"1d3efecda3d4e251039044a","佛山":"1fbfffffffdfe7f9dff745b","盘锦":"1d3efd5dbfd2ea11008044a","乌鲁木齐":"1f3effffbffff6798f9644b","东方":"180cf849a1d4e211038040a","汉中":"1d18fe6dabd4e251038044a","呼和浩特":"1f3effefffd3ea591f9644b","青岛":"1f3effffbffff6798b9645b","重庆":"17ff37f4ffbffffdffd775d","万宁":"180cf809a1d4a211038040a","景德镇":"1d1efeccafd4a211008444a","东营":"1f3effcfbff7e2598b9044a","张掖":"1818f8692bd0e211008044a","绵阳":"1d3efecfabd4e751138044a","甘孜":"1c08f84d01d0e211008044a","潜江":"181cfecdbbd4e251038044a","十堰":"1d3efdcdbbd0e251038044a","哈尔滨":"1ffffffffffffa799b9745b","天门":"181cfecdbbd4e251038044a","淮南":"1d3effcdbff4e259039644a","淮北":"1d3efdcdbff0e219038044a","武威":"1818f8692bd0e211008044a","湘潭":"1d3efecdafdce253038044a","陵水":"180cf809a1d4a211038040a","长沙":"1f3effffffdff6d99f9645b","泰州":"1d3efffdbfffe259039744a","恩施":"1c18fe4dabd0e211038044a","无锡":"1f3fffffffffe6d91f9745b","徐州":"1f3effcffffffa798b9644a","酒泉":"1818f8692bd0e211008044a","锦州":"1d3efd5dbfd2ea11008044a","德州":"1f3effcfbfd7e2598b8244a","雅安":"1d3efecf2bd0e251038044a","巴彦淖尔":"183ef84dbbd0ea11008044a","湘西":"1d18fecda7d4e251038044a","宁波":"1f3effffffffffe6f99f9745b","烟台":"1f3effffbffff2798b9445b","自贡":"1d3efecf6bd4e751138044a","延边":"1c3efd4dbbd0ea11008044a","沈阳":"1ffffffffffffa799b9745b","肇庆":"1d3efeedb3d4e2d103b444b","阳江":"1d3efeefa3d4e251039444b","眉山":"1d3efecfabd4e751138044a","江门":"1d3efeffbfdee2d103b445b","舟山":"1d3efeedabd4e2d1039444b","赣州":"1d3efecfafd4e211038744a","通辽":"183ef84dbbd0ea11008044a","邢台":"1f3efddfbfd3ea590b8044a","西宁":"1c3cfecde7d0e219038045a","大同":"1d3efdcfbbd0ea510b8064a"};
+
+function getInventoryForCity(cityName){
+  var hex = INV_MAP[cityName];
+  if(!hex) return [];
+  var cats = [];
+  for(var i = 0; i < INV_CATS.length; i++){
+    var charIdx = hex.length - 1 - Math.floor(i / 4);
+    if(charIdx < 0) break;
+    var nibble = parseInt(hex[charIdx], 16);
+    if((nibble >> (i % 4)) & 1) cats.push(INV_CATS[i]);
+  }
+  return cats;
+}
+function getInventoryCount(cityName){
+  var hex = INV_MAP[cityName];
+  if(!hex) return 0;
+  var count = 0;
+  for(var i = 0; i < INV_CATS.length; i++){
+    var charIdx = hex.length - 1 - Math.floor(i / 4);
+    if(charIdx < 0) break;
+    var nibble = parseInt(hex[charIdx], 16);
+    if((nibble >> (i % 4)) & 1) count++;
+  }
+  return count;
+}
+
+// ==================== 城市坐标 ====================
+var cityCoords = {
+  '北京':[39.9,116.4],'上海':[31.2,121.5],'广州':[23.1,113.3],'深圳':[22.5,114.1],
+  '杭州':[30.3,120.2],'成都':[30.6,104.1],'武汉':[30.6,114.3],'南京':[32.1,118.8],
+  '重庆':[29.6,106.5],'西安':[34.3,108.9],'苏州':[31.3,120.6],'天津':[39.1,117.2],
+  '长沙':[28.2,113.0],'郑州':[34.7,113.7],'青岛':[36.1,120.4],'济南':[36.7,117.0],
+  '合肥':[31.8,117.3],'福州':[26.1,119.3],'厦门':[24.5,118.1],'昆明':[25.0,102.7],
+  '大连':[38.9,121.6],'宁波':[29.9,121.5],'无锡':[31.6,120.3],'佛山':[23.0,113.1],
+  '东莞':[23.0,113.7],'沈阳':[41.8,123.4],'哈尔滨':[45.8,126.5],'石家庄':[38.0,114.5],
+  '南昌':[28.7,115.9],'贵阳':[26.6,106.7],'淄博':[36.8,118.1],'秦皇岛':[39.9,119.6],
+  '日照':[35.4,119.5],'湖州':[30.9,120.1],'淮安':[33.6,119.0],'太原':[37.9,112.5],
+  '南宁':[22.8,108.4],'温州':[28.0,120.7],'泉州':[24.9,118.6],'常州':[31.8,119.9],
+  '绍兴':[30.0,120.6],'烟台':[37.5,121.4],'潍坊':[36.7,119.1],'兰州':[36.1,103.8],
+  '乌鲁木齐':[43.8,87.6],'徐州':[34.3,117.2],'临沂':[35.1,118.3],'洛阳':[34.6,112.4],
+  '三亚':[18.3,109.5],'万宁':[18.8,110.4],'上饶':[28.5,117.9],'东方':[19.1,108.6],
+  '东营':[37.5,118.5],'中卫':[37.5,105.2],'中山':[22.5,113.4],'临汾':[36.1,111.5],
+  '丹东':[40.0,124.4],'丽水':[28.5,119.9],'丽江':[26.9,100.2],'乐山':[29.6,103.8],
+  '九江':[29.7,116.0],'云浮':[22.9,112.0],'保定':[38.9,115.5],'保山':[25.1,99.2],
+  '信阳':[32.1,114.1],'儋州':[19.5,109.6],'六安':[31.7,116.5],'兴安盟':[46.1,122.0],
+  '凉山':[27.9,102.3],'北海':[21.5,109.1],'十堰':[32.6,110.8],'南通':[32.0,120.9],
+  '南平':[26.6,118.2],'唐山':[39.6,118.2],'商丘':[34.4,115.7],'嘉兴':[30.8,120.8],
+  '四平':[43.2,124.4],'固原':[36.0,106.3],'大同':[40.1,113.3],'大理':[25.6,100.2],
+  '天门':[30.7,113.2],'威海':[37.5,122.1],'宁德':[26.7,119.5],'安庆':[30.5,117.1],
+  '安顺':[26.3,105.9],'宜宾':[28.8,104.6],'宜昌':[30.7,111.3],'宣城':[30.9,118.8],
+  '岳阳':[29.4,113.1],'崇左':[22.4,107.4],'巴彦淖尔':[40.7,107.4],'庆阳':[35.7,107.6],
+  '延边':[42.9,129.5],'开封':[34.8,114.3],'张家口':[40.8,114.9],'张家界':[29.1,110.5],
+  '张掖':[38.9,100.5],'德宏':[24.4,98.6],'德州':[37.4,116.4],'恩施':[30.3,109.5],
+  '惠州':[23.1,114.4],'扬州':[32.4,119.4],'承德':[40.9,117.9],'拉萨':[29.7,91.1],
+  '揭阳':[23.5,116.4],'柳州':[24.3,109.4],'桂林':[25.3,110.3],'梅州':[24.3,116.1],
+  '武威':[37.9,102.6],'毕节':[27.3,105.3],'汉中':[33.1,107.0],'汕头':[23.4,116.7],
+  '汕尾':[22.8,115.4],'江门':[22.6,113.1],'池州':[30.7,117.5],'沧州':[38.3,116.8],
+  '河源':[23.7,114.7],'泰安':[36.2,117.1],'泰州':[32.5,119.9],'海口':[20.0,110.3],
+  '淮北':[33.97,116.8],'淮南':[32.6,117.0],'清远':[23.7,113.1],'湘潭':[27.8,112.9],
+  '湘西':[28.3,109.7],'湛江':[21.3,110.4],'漳州':[24.5,117.6],'潜江':[30.4,112.9],
+  '潮州':[23.7,116.6],'澳门':[22.2,113.5],'玉溪':[24.4,102.5],'珠海':[22.3,113.6],
+  '甘孜':[30.1,101.96],'白山':[41.9,126.4],'百色':[23.9,106.6],'益阳':[28.6,112.4],
+  '盐城':[33.4,120.2],'盘锦':[41.1,122.1],'眉山':[30.1,103.8],'绥化':[46.6,127.0],
+  '绵阳':[31.5,104.7],'肇庆':[23.1,112.5],'自贡':[29.4,104.8],'舟山':[30.0,122.1],
+  '芜湖':[31.3,118.4],'荆州':[30.3,112.2],'菏泽':[35.2,115.5],'葫芦岛':[40.7,120.8],
+  '蚌埠':[32.9,117.4],'衡水':[37.7,115.7],'衡阳':[26.9,112.6],'衢州':[28.9,118.9],
+  '襄阳':[32.0,112.1],'西双版纳':[22.0,100.8],'西宁':[36.6,101.8],'赣州':[25.9,115.0],
+  '赤峰':[42.3,118.9],'运城':[35.0,111.0],'连云港':[34.6,119.2],'迪庆':[27.8,99.7],
+  '通辽':[43.6,122.3],'邢台':[37.1,114.5],'邯郸':[36.6,114.5],'邵阳':[27.2,111.5],
+  '郴州':[25.8,113.0],'酒泉':[39.7,98.5],'银川':[38.5,106.3],'锦州':[41.1,121.1],
+  '长春':[43.9,125.3],'防城港':[21.7,108.3],'阳江':[21.9,111.9],'阿坝':[31.9,102.2],
+  '陵水':[18.5,110.0],'雅安':[30.0,103.0],'鞍山':[41.1,122.9],'韶关':[24.8,113.6],
+  '香港':[22.3,114.2],'鹰潭':[28.3,117.0],'黄山':[29.7,118.3],'黔南':[26.3,107.5],
+  '齐齐哈尔':[47.4,124.0],'呼伦贝尔':[49.2,119.8],'呼和浩特':[40.8,111.7],
+  '景德镇':[29.3,117.2],'晋中':[37.7,112.7],'晋城':[35.5,112.9],'普洱':[22.8,101.0]
+};
+
+// ==================== Searchable Select Component ====================
+function initSearchSelect(containerId, options, onChange){
+  var container = document.getElementById(containerId);
+  var input = container.querySelector('input');
+  var dropdown = container.querySelector('.ss-dropdown');
+  var clearBtn = container.querySelector('.ss-clear');
+  var allOptions = options || [];
+  var isOpen = false;
+
+  function render(filter){
+    var html = '<div class="ss-option" data-val="">-- 全部 --</div>';
+    var q = (filter || '').toLowerCase();
+    allOptions.forEach(function(opt){
+      if(!q || opt.toLowerCase().indexOf(q) >= 0){
+        html += '<div class="ss-option" data-val="'+opt+'">'+opt+'</div>';
+      }
+    });
+    dropdown.innerHTML = html;
+  }
+
+  function open(){
+    render(input.value === input.getAttribute('data-display') ? '' : input.value);
+    dropdown.classList.add('open');
+    isOpen = true;
+  }
+  function close(){
+    dropdown.classList.remove('open');
+    isOpen = false;
+    // restore display text
+    var val = input.getAttribute('data-value');
+    input.value = val ? val : '';
+  }
+
+  input.addEventListener('focus', function(){ open(); input.select(); });
+  input.addEventListener('input', function(){
+    if(!isOpen) open();
+    render(input.value);
+  });
+  input.addEventListener('blur', function(){
+    setTimeout(close, 150);
+  });
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') { close(); input.blur(); }
+    if(e.key === 'Enter'){
+      var first = dropdown.querySelector('.ss-option[data-val]:not([data-val=""])');
+      if(first && input.value) { selectOption(first.getAttribute('data-val')); }
+      else { selectOption(''); }
+      input.blur();
+    }
+  });
+
+  dropdown.addEventListener('mousedown', function(e){
+    e.preventDefault(); // prevent blur
+    var opt = e.target.closest('.ss-option');
+    if(opt) selectOption(opt.getAttribute('data-val'));
+  });
+
+  clearBtn.addEventListener('mousedown', function(e){
+    e.preventDefault();
+    selectOption('');
+    input.blur();
+  });
+
+  function selectOption(val){
+    input.setAttribute('data-value', val);
+    input.setAttribute('data-display', val);
+    input.value = val;
+    close();
+    if(onChange) onChange(val);
+  }
+
+  // Public API
+  container._ss = {
+    setOptions: function(opts){ allOptions = opts; },
+    getValue: function(){ return input.getAttribute('data-value') || ''; },
+    setValue: function(v){ selectOption(v); }
+  };
+}
+
+// ==================== Core Logic ====================
+var rawData = [];
+var filteredData = [];
+var allCityKeywords = {};
+var selectedCity = '';
+var keyOnly = false;
+var statsDimension = 'all';
+var currentTab = 'all';
+
+function today(){ return new Date(); }
+function dateStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function pad(n){ return n<10?'0'+n:''+n; }
+function addDays(d, n){ var r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function parseDate(s){ var p=s.split('-'); return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); }
+
+function isOccupiedBefore30(item){
+  var t = today(); var d30 = addDays(t, 30);
+  if(item.date){
+    var d = parseDate(item.date);
+    return d >= t && d <= d30;
+  }
+  var start = parseDate(item.start_date); var end = parseDate(item.end_date);
+  return start <= d30 && end >= t;
+}
+function isOccupiedAt30(item){
+  var d30 = addDays(today(), 30);
+  if(item.date){
+    var d = parseDate(item.date);
+    return d.getFullYear()===d30.getFullYear() && d.getMonth()===d30.getMonth() && d.getDate()===d30.getDate();
+  }
+  var start = parseDate(item.start_date); var end = parseDate(item.end_date);
+  return d30 >= start && d30 <= end;
+}
+function nearestAvailDate(items){
+  var latestEnd = null;
+  items.forEach(function(item){
+    if(isOccupiedBefore30(item)){
+      var end = item.date ? parseDate(item.date) : parseDate(item.end_date);
+      if(!latestEnd || end > latestEnd) latestEnd = end;
+    }
+  });
+  return latestEnd ? addDays(latestEnd, 1) : today();
+}
+function buildAllKeywords(data){
+  var cities = {};
+  data.forEach(function(d){
+    if(!cities[d.city]) cities[d.city] = {};
+    cities[d.city][d.category] = true;
+  });
+  allCityKeywords = {};
+  Object.keys(cities).forEach(function(city){ allCityKeywords[city] = Object.keys(cities[city]); });
+}
+
+// ==================== Filters ====================
+function getFilterProvince(){ return document.getElementById('ssProvince')._ss.getValue(); }
+function getFilterCity(){ return document.getElementById('ssCity')._ss.getValue(); }
+function getFilterCategory(){ return document.getElementById('ssCategory')._ss.getValue(); }
+
+var tourismOnly = false;
+function applyFilters(){
+  var fp = getFilterProvince();
+  var fc = getFilterCity();
+  var fcat = getFilterCategory();
+  filteredData = rawData.filter(function(d){
+    if(fp && CITY_PROVINCE[d.city] !== fp) return false;
+    if(fc && d.city !== fc) return false;
+    if(fcat && d.category !== fcat) return false;
+    return true;
+  });
+  renderMap();
+  renderStats();
+  // 城市筛选联动详情面板
+  if(fc){
+    selectedCity = fc;
+    renderDetail(fc);
+  } else if(!fc && fcat && !selectedCity){
+    // 类目筛选时展示跨城市类目汇总
+    renderCategoryDetail(fcat);
+  } else if(fcat && !fc){
+    renderCategoryDetail(fcat);
+  } else if(tourismOnly && !fc && !fcat && !selectedCity){
+    renderTourismSummary();
+  } else if(selectedCity){
+    renderDetail(selectedCity);
+  }
+}
+
+function initFilters(){
+  var provinces = [], cities = [], cats = [];
+  // Province: from all inventory cities + FBI data cities
+  var allCities = Object.keys(INV_MAP);
+  rawData.forEach(function(d){ if(allCities.indexOf(d.city)<0) allCities.push(d.city); });
+  allCities.forEach(function(c){
+    if(CITY_PROVINCE[c] && provinces.indexOf(CITY_PROVINCE[c])<0) provinces.push(CITY_PROVINCE[c]);
+  });
+  rawData.forEach(function(d){
+    if(cities.indexOf(d.city)<0) cities.push(d.city);
+    if(cats.indexOf(d.category)<0) cats.push(d.category);
+  });
+  // Also add inventory cities
+  allCities.forEach(function(c){ if(cities.indexOf(c)<0) cities.push(c); });
+  // Also add inventory categories
+  INV_CATS.forEach(function(c){ if(cats.indexOf(c)<0) cats.push(c); });
+  provinces.sort(); cities.sort(); cats.sort();
+  document.getElementById('ssProvince')._ss.setOptions(provinces);
+  document.getElementById('ssCity')._ss.setOptions(cities);
+  document.getElementById('ssCategory')._ss.setOptions(cats);
+}
+
+// ==================== Map ====================
+var chart; var mapReady = false;
+function initMap(callback){
+  chart = echarts.init(document.getElementById('mapChart'));
+  window.addEventListener('resize', function(){ chart.resize(); });
+  fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+    .then(function(r){ return r.json(); })
+    .then(function(china){
+      echarts.registerMap('china', china);
+      mapReady = true;
+      if(callback) callback();
+    })
+    .catch(function(e){
+      document.getElementById('mapChart').innerHTML = '<div style="text-align:center;padding:100px;color:#ef4444;">地图数据加载失败</div>';
+    });
+}
+
+function renderMap(){
+  if(!mapReady) return;
+  var fp = getFilterProvince();
+  var fc = getFilterCity();
+  var fcat = getFilterCategory();
+
+  var cityMap = {};
+  filteredData.forEach(function(d){
+    if(tourismOnly && !isTourismCity(d.city)) return;
+    if(!cityMap[d.city]) cityMap[d.city] = {city:d.city, lat:d.lat, lng:d.lng, items:[]};
+    cityMap[d.city].items.push(d);
+  });
+
+  // Show inventory cities even without FBI data
+  Object.keys(INV_MAP).forEach(function(city){
+    if(tourismOnly && !isTourismCity(city)) return;
+    if(fp && CITY_PROVINCE[city] !== fp) return;
+    if(fc && city !== fc) return;
+    if(fcat){
+      var invCats = getInventoryForCity(city);
+      if(invCats.indexOf(fcat) < 0) return;
+    }
+    if(!cityMap[city] && cityCoords[city]){
+      cityMap[city] = {city:city, lat:cityCoords[city][0], lng:cityCoords[city][1], items:[]};
+    }
+  });
+
+  var scatterData = [];
+  Object.keys(cityMap).forEach(function(city){
+    var c = cityMap[city];
+    var invCount = fcat ? (getInventoryForCity(city).indexOf(fcat)>=0 ? 1 : 0) : getInventoryCount(city);
+    if(invCount === 0) return;
+
+    var occupiedCats = {};
+    c.items.forEach(function(item){
+      if(isOccupiedBefore30(item)) occupiedCats[item.category] = true;
+    });
+    var occupied30 = Object.keys(occupiedCats).length;
+    var rate = occupied30 / invCount;
+
+    var color;
+    if(rate === 0) color = '#10b981';
+    else if(rate < 0.3) color = '#10b981';
+    else if(rate < 0.6) color = '#eab308';
+    else if(rate < 0.8) color = '#f59e0b';
+    else color = '#ef4444';
+
+    var size = Math.max(10, Math.min(36, 8 + invCount * 0.4));
+    scatterData.push({
+      name: city, value: [c.lng, c.lat, rate], symbolSize: size,
+      itemStyle: { color: color, opacity: 0.85 },
+      label: { show: true, formatter: '{b}', fontSize: 9, color: '#94a3b8', position: 'bottom', distance: 4 },
+      _city: city, _invCount: invCount, _occupied30: occupied30, _rate: rate
+    });
+  });
+
+  var option = {
+    backgroundColor: '#0f1923',
+    geo: { map: 'china', roam: true, zoom: 1.2, center: [104, 36],
+      itemStyle: { areaColor: '#1a2634', borderColor: '#2d3e50' },
+      emphasis: { itemStyle: { areaColor: '#243447' } },
+      label: { show: true, color: '#475569', fontSize: 10 },
+      regions: []
+    },
+    tooltip: { trigger: 'item', backgroundColor: '#1a2634', borderColor: '#2d3e50',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      formatter: function(p){
+        if(!p.data || !p.data._city) return '';
+        var d = p.data;
+        var prov = CITY_PROVINCE[d._city] || '';
+        var tags = []; if(isTourismCity(d._city)) tags.push('✨暑期旅游热门'); var sp = getSpecialty(d._city); if(sp) tags.push('特色:'+sp.keywords.slice(0,2).join('/')); return '<b>'+d._city+'</b>'+(prov ? ' ('+prov+')' : '')+'<br>可售坑位: '+d._invCount+'<br>D+30已占: '+d._occupied30+'<br>占量率: '+Math.round(d._rate*100)+'%<br>剩余可售: '+(d._invCount - d._occupied30)+(tags.length ? '<br><span style=color:#fbbf24>'+tags.join(' | ')+'</span>' : '');
+      }
+    },
+    series: [{
+      type: 'scatter', coordinateSystem: 'geo', data: scatterData, encode: { value: 2 }
+    },{
+      type: 'scatter', coordinateSystem: 'geo', symbol: 'pin', symbolSize: 14,
+      data: scatterData.filter(function(d){ return isTourismCity(d._city); }).map(function(d){
+        return {name:d.name, value:[d.value[0]+0.5, d.value[1]+0.5], itemStyle:{color:'#db2777',opacity:0.9}, label:{show:false}, _city:d._city, _invCount:d._invCount, _occupied30:d._occupied30, _rate:d._rate};
+      }), encode:{value:2}
+    }]
+  };
+  chart.setOption(option, true);
+  chart.off('click');
+  chart.on('click', function(params){
+    if(params.data && params.data._city){ selectedCity = params.data._city; renderDetail(selectedCity); }
+  });
+}
+
+// ==================== Stats ====================
+function renderStats(){
+  var fp = getFilterProvince();
+  var fc = getFilterCity();
+  var fcat = getFilterCategory();
+  var dim = statsDimension; // 'all', 'tourism', 'key'
+
+  var totalInv = 0;
+  var citiesWithInv = Object.keys(INV_MAP);
+  if(fc) citiesWithInv = [fc];
+  else if(fp) citiesWithInv = citiesWithInv.filter(function(c){ return CITY_PROVINCE[c] === fp; });
+  if(dim === 'tourism') citiesWithInv = citiesWithInv.filter(function(c){ return isTourismCity(c); });
+
+  citiesWithInv.forEach(function(city){
+    var invCats = getInventoryForCity(city);
+    if(dim === 'key') invCats = invCats.filter(function(c){ return isKeyCategory(c); });
+    if(fcat){
+      if(invCats.indexOf(fcat) >= 0) totalInv++;
+    } else {
+      totalInv += invCats.length;
+    }
+  });
+
+  var occupied30 = 0, occupiedCities = {}, occupiedCats = {};
+  var cityMap = {};
+  filteredData.forEach(function(d){
+    if(dim === 'tourism' && !isTourismCity(d.city)) return;
+    if(dim === 'key' && !isKeyCategory(d.category)) return;
+    if(!cityMap[d.city]) cityMap[d.city] = {};
+    if(!cityMap[d.city][d.category]) cityMap[d.city][d.category] = [];
+    cityMap[d.city][d.category].push(d);
+  });
+  Object.keys(cityMap).forEach(function(city){
+    Object.keys(cityMap[city]).forEach(function(cat){
+      var items = cityMap[city][cat];
+      if(items.some(function(it){ return isOccupiedBefore30(it); })){
+        occupied30++;
+        occupiedCities[city] = true;
+        occupiedCats[cat] = true;
+      }
+    });
+  });
+
+  var avail = totalInv - occupied30;
+  var rate = totalInv > 0 ? Math.round(occupied30 / totalInv * 100) : 0;
+
+  document.getElementById('statTotal').textContent = totalInv;
+  document.getElementById('statOccupied').textContent = occupied30;
+  document.getElementById('statAvail').textContent = avail > 0 ? avail : 0;
+  document.getElementById('statRate').textContent = rate + '%';
+  document.getElementById('statCities').textContent = Object.keys(occupiedCities).length;
+  document.getElementById('statCats').textContent = Object.keys(occupiedCats).length;
+}
+
+// ==================== Detail Panel ====================
+function renderDetail(city){
+  document.getElementById('detailTabs').style.display = 'flex';
+  var prov = CITY_PROVINCE[city] || '';
+  document.getElementById('detailTitle').textContent = (prov ? prov+' · ' : '') + city + ' 占量详情';
+
+  var cityItems = filteredData.filter(function(d){ return d.city === city; });
+  var catMap = {};
+  cityItems.forEach(function(d){
+    if(!catMap[d.category]) catMap[d.category] = [];
+    catMap[d.category].push(d);
+  });
+
+  var invCats = getInventoryForCity(city);
+  var invCount = invCats.length;
+  var occupiedCats = {};
+  Object.keys(catMap).forEach(function(cat){
+    if(catMap[cat].some(function(it){ return isOccupiedBefore30(it); })) occupiedCats[cat] = true;
+  });
+  var occCount = Object.keys(occupiedCats).length;
+  var rate = invCount > 0 ? Math.round(occCount / invCount * 100) : 0;
+
+  document.getElementById('detailSubtitle').textContent =
+    '可售'+invCount+' · 已占'+occCount+' · 占量率'+rate+'% · 剩余'+(invCount-occCount)+' · 单店买全城';
+  // 旅游+特色提示条
+  var hintHtml = '';
+  if(isTourismCity(city)) hintHtml += '<span class="tag tag-tourism">✨ 暑期旅游热门</span>';
+  var sp = getSpecialty(city);
+  if(sp) hintHtml += '<span class="tag tag-specialty">本地特色: '+sp.keywords.join(', ')+'</span>';
+  var hintEl = document.getElementById('specialtyHint');
+  if(!hintEl){ hintEl = document.createElement('div'); hintEl.id='specialtyHint'; hintEl.className='specialty-hint'; document.getElementById('detailSubtitle').parentNode.insertBefore(hintEl, document.getElementById('detailTabs')); }
+  hintEl.innerHTML = hintHtml;
+  hintEl.style.display = hintHtml ? '' : 'none';
+  renderDetailTab(city, catMap);
+}
+
+function renderDetailTab(city, catMap){
+  if(!catMap){
+    var cityItems = filteredData.filter(function(d){ return d.city === city; });
+    catMap = {};
+    cityItems.forEach(function(d){
+      if(!catMap[d.category]) catMap[d.category] = [];
+      catMap[d.category].push(d);
+    });
+  }
+  var invCats = getInventoryForCity(city);
+  var html = '';
+
+  if(currentTab === 'all'){
+    html = '<input type="text" id="detailTabFilter" placeholder="搜索类目..." style="width:100%;padding:4px 8px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;box-sizing:border-box;">';
+    html += '<table class="data-table"><thead><tr><th>类目</th><th>区域</th><th>占量日期</th><th>D+30前</th><th>D+30</th></tr></thead><tbody>';
+    Object.keys(catMap).sort().forEach(function(cat){
+      catMap[cat].forEach(function(item){
+        var b30 = isOccupiedBefore30(item);
+        var a30 = isOccupiedAt30(item);
+        var period = item.date || (item.start_date+' ~ '+item.end_date);
+        html += '<tr class="filterable-row" data-cat="'+item.category+'"><td>'+item.category+(isKeyCategory(item.category)?' <span class="status-badge badge-key">重点</span>':'')+'</td><td>'+(item.area_name||'')+'</td><td>'+period+'</td>';
+        html += '<td><span class="status-badge '+(b30?'badge-occupied':'badge-available')+'">'+(b30?'已占':'可售')+'</span></td>';
+        html += '<td><span class="status-badge '+(a30?'badge-occupied':'badge-available')+'">'+(a30?'已占':'可售')+'</span></td></tr>';
+      });
+    });
+    html += '</tbody></table>';
+    if(Object.keys(catMap).length === 0) html = '<div class="detail-placeholder">该城市暂无占量数据<br>所有'+invCats.length+'个类目均可售</div>';
+
+  } else if(currentTab === 'unoccupied'){
+    // 未占类目：库存中今天→D+30整个窗口内无任何排期的类目
+    var occupiedCatSet = {};
+    Object.keys(catMap).forEach(function(cat){
+      if(catMap[cat].some(function(it){ return isOccupiedBefore30(it); })) occupiedCatSet[cat] = true;
+    });
+    html = '<div style="margin-bottom:6px;font-size:10px;color:#64748b;">口径：今天→D+30整个30天内无任何排期占量的类目</div>';
+    html += '<input type="text" id="detailTabFilter" placeholder="搜索类目..." style="width:100%;padding:4px 8px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;box-sizing:border-box;">';
+    html += '<table class="data-table"><thead><tr><th>可售类目</th><th>单店买全城</th><th>状态</th></tr></thead><tbody>';
+    var sp = getSpecialty(city);
+    var unoccCount = 0;
+    invCats.sort().forEach(function(cat){
+      if(!occupiedCatSet[cat]){
+        unoccCount++;
+        var isSpec = sp && sp.cats.indexOf(cat)>=0; var isKey = isKeyCategory(cat); html += '<tr class="filterable-row" data-cat="'+cat+'"><td>'+cat+(isKey?' <span class="status-badge badge-key">重点</span>':'')+(isSpec?' <span class="status-badge badge-specialty">本地特色</span>':'')+'</td><td><span class="status-badge badge-citywide">支持</span></td><td><span class="status-badge badge-available">可售</span></td></tr>';
+      }
+    });
+    html += '</tbody></table>';
+    if(unoccCount === 0) html = '<div class="detail-placeholder">该城市30天内所有库存类目均已被占</div>';
+    else html = '<div style="font-size:10px;color:#64748b;margin-bottom:6px;">共 '+unoccCount+' / '+invCats.length+' 个类目可售</div>' + html;
+
+  } else if(currentTab === 'avail30'){
+    // D+30可售：第30天当天未被占的类目（可能前面有排期但D+30那天释放了）
+    html = '<div style="margin-bottom:6px;font-size:10px;color:#64748b;">口径：第30天（'+dateStr(addDays(today(),30))+'）当天未被占量的类目</div>';
+    html += '<input type="text" id="detailTabFilter" placeholder="搜索类目..." style="width:100%;padding:4px 8px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;box-sizing:border-box;">';
+    html += '<table class="data-table"><thead><tr><th>可售类目</th><th>最近可占日期</th><th>状态</th></tr></thead><tbody>';
+    var allCats = invCats.length > 0 ? invCats : (allCityKeywords[city] || Object.keys(catMap));
+    var sp30 = getSpecialty(city);
+    var avail30Count = 0;
+    allCats.sort().forEach(function(cat){
+      var items = catMap[cat] || [];
+      var occupiedAt30 = items.some(function(it){ return isOccupiedAt30(it); });
+      if(!occupiedAt30){
+        avail30Count++;
+        var occupiedBefore = items.some(function(it){ return isOccupiedBefore30(it); });
+        var availDate = occupiedBefore ? dateStr(nearestAvailDate(items)) : dateStr(today());
+        var isSpec30 = sp30 && sp30.cats.indexOf(cat)>=0; var isKey30 = isKeyCategory(cat); html += '<tr class="filterable-row" data-cat="'+cat+'"><td>'+cat+(isKey30?' <span class="status-badge badge-key">重点</span>':'')+(isSpec30?' <span class="status-badge badge-specialty">本地特色</span>':'')+'</td><td><span class="status-badge badge-date">'+availDate+'</span></td><td><span class="status-badge badge-available">可售</span></td></tr>';
+      }
+    });
+    html += '</tbody></table>';
+    if(avail30Count === 0) html = '<div class="detail-placeholder">该城市D+30所有类目均已被占</div>';
+  }
+  document.getElementById('detailContent').innerHTML = html;
+  // Bind in-tab filter for unoccupied/avail30 + keyOnly
+  var tabFilter = document.getElementById('detailTabFilter');
+  if(tabFilter){
+    tabFilter.addEventListener('input', function(){ applyDetailFilter(); });
+  }
+  // sync keyOnly button state
+  var kb = document.getElementById('btnKeyOnly');
+  if(kb) kb.classList.toggle('active', keyOnly);
+}
+
+
+// ==================== 旅游城市汇总指引 ====================
+function renderTourismSummary(){
+  document.getElementById('detailTabs').style.display = 'none';
+  document.getElementById('detailTitle').textContent = '\u2728 暑期旅游热门城市指引';
+  selectedCity = '';
+  var hintEl = document.getElementById('specialtyHint');
+  if(hintEl) hintEl.style.display = 'none';
+  document.getElementById('detailSubtitle').textContent = '\u5171'+TOURISM_CITIES.length+'\u4e2a旅游热门城市\uff0c以下为各城市可占类目概览';
+  var fp = getFilterProvince();
+  var cities = TOURISM_CITIES.filter(function(c){ if(fp && CITY_PROVINCE[c] !== fp) return false; return !!INV_MAP[c]; });
+  var cityMap = {};
+  filteredData.forEach(function(d){ if(!cityMap[d.city]) cityMap[d.city]={}; if(!cityMap[d.city][d.category]) cityMap[d.city][d.category]=[]; cityMap[d.city][d.category].push(d); });
+  var html = '<input type="text" id="detailTabFilter" placeholder="\u641c\u7d22\u57ce\u5e02\u6216\u7c7b\u76ee..." style="width:100%;padding:4px 8px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;box-sizing:border-box;">';
+  html += '<table class="data-table"><thead><tr><th>\u57ce\u5e02</th><th>\u672c\u5730\u7279\u8272</th><th>\u53ef\u5360\u7279\u8272\u7c7b\u76ee</th><th>\u5269\u4f59\u53ef\u552e</th></tr></thead><tbody>';
+  cities.sort().forEach(function(city){
+    var invCats = getInventoryForCity(city);
+    var items = cityMap[city] || {};
+    var occupiedSet = {};
+    Object.keys(items).forEach(function(cat){ if(items[cat].some(function(it){return isOccupiedBefore30(it);})) occupiedSet[cat]=true; });
+    var avail = invCats.length - Object.keys(occupiedSet).length;
+    var sp = getSpecialty(city);
+    var spText = sp ? sp.keywords.slice(0,2).join('/') : '-';
+    var spAvail = [];
+    if(sp){ sp.cats.forEach(function(c){ if(invCats.indexOf(c)>=0 && !occupiedSet[c]) spAvail.push(c.split(';').pop()); }); }
+    var spAvailText = spAvail.length > 0 ? '<span class="status-badge badge-specialty">'+spAvail.join(', ')+'</span>' : '<span style="color:#64748b">\u5df2\u5360\u6ee1</span>';
+    html += '<tr class="filterable-row" data-cat="'+city+' '+spText+'"><td style="cursor:pointer;color:#3b82f6" data-city="'+city+'">'+city+'</td><td>'+spText+'</td><td>'+spAvailText+'</td><td>'+avail+'/'+invCats.length+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('detailContent').innerHTML = html;
+  // Bind city click
+  document.querySelectorAll('[data-city]').forEach(function(el){ el.addEventListener('click', function(){ selectedCity=this.getAttribute('data-city'); renderDetail(selectedCity); }); });
+  var tabFilter = document.getElementById('detailTabFilter');
+  if(tabFilter){ tabFilter.addEventListener('input', function(){ var q=this.value.toLowerCase(); document.querySelectorAll('.filterable-row').forEach(function(r){ r.style.display=(!q||r.getAttribute('data-cat').toLowerCase().indexOf(q)>=0)?'':'none'; }); }); }
+}
+
+function applyDetailFilter(){
+  var tabFilter = document.getElementById('detailTabFilter');
+  var q = tabFilter ? tabFilter.value.toLowerCase() : '';
+  var rows = document.querySelectorAll('.filterable-row');
+  rows.forEach(function(r){
+    var text = r.getAttribute('data-cat').toLowerCase();
+    var matchText = !q || text.indexOf(q) >= 0;
+    var matchKey = !keyOnly || isKeyCategory(r.getAttribute('data-cat'));
+    r.style.display = (matchText && matchKey) ? '' : 'none';
+  });
+}
+
+document.getElementById('btnKeyOnly').addEventListener('click', function(e){
+  e.stopPropagation();
+  keyOnly = !keyOnly;
+  this.classList.toggle('active', keyOnly);
+  this.style.background = keyOnly ? '#dc2626' : '#fee2e2';
+  this.style.color = keyOnly ? '#fff' : '#dc2626';
+  applyDetailFilter();
+});
+
+// Tab switching
+document.getElementById('detailTabs').addEventListener('click', function(e){
+  var tab = e.target.getAttribute('data-tab');
+  if(!tab) return;
+  currentTab = tab;
+  document.querySelectorAll('.detail-tab').forEach(function(t){ t.classList.remove('active'); });
+  e.target.classList.add('active');
+  if(selectedCity) renderDetailTab(selectedCity);
+  else {
+    var fcat = getFilterCategory();
+    if(fcat) renderCategoryDetail(fcat);
+  }
+});
+
+// ==================== Category Cross-City Detail ====================
+function renderCategoryDetail(cat){
+  document.getElementById('detailTabs').style.display = 'flex';
+  document.getElementById('detailTitle').textContent = '类目详情: ' + cat;
+  selectedCity = '';
+
+  var fp = getFilterProvince();
+  var citiesWithCat = [];
+  Object.keys(INV_MAP).forEach(function(city){
+    if(fp && CITY_PROVINCE[city] !== fp) return;
+    var invCats = getInventoryForCity(city);
+    if(invCats.indexOf(cat) >= 0) citiesWithCat.push(city);
+  });
+
+  var occupiedCities = {};
+  filteredData.forEach(function(d){
+    if(d.category === cat && isOccupiedBefore30(d)) occupiedCities[d.city] = true;
+  });
+
+  var occCount = Object.keys(occupiedCities).length;
+  var totalCount = citiesWithCat.length;
+  var rate = totalCount > 0 ? Math.round(occCount / totalCount * 100) : 0;
+  document.getElementById('detailSubtitle').textContent =
+    '可售城市'+totalCount+' · 已占'+occCount+' · 占量率'+rate+'% · 剩余'+(totalCount-occCount)+' · 单店买全城';
+
+  var html = '';
+  if(currentTab === 'all'){
+    html = '<table class="data-table"><thead><tr><th>城市</th><th>省份</th><th>区域</th><th>占量日期</th><th>D+30</th></tr></thead><tbody>';
+    filteredData.forEach(function(d){
+      if(d.category !== cat) return;
+      var a30 = isOccupiedAt30(d);
+      html += '<tr><td>'+d.city+'</td><td>'+(CITY_PROVINCE[d.city]||'')+'</td><td>'+(d.area_name||'')+'</td><td>'+(d.date||'')+'</td>';
+      html += '<td><span class="status-badge '+(a30?'badge-occupied':'badge-available')+'">'+(a30?'已占':'可售')+'</span></td></tr>';
+    });
+    html += '</tbody></table>';
+    if(!filteredData.some(function(d){ return d.category===cat; }))
+      html = '<div class="detail-placeholder">该类目暂无占量数据<br>所有'+totalCount+'个城市均可售</div>';
+
+  } else if(currentTab === 'unoccupied'){
+    html = '<div style="margin-bottom:6px;font-size:10px;color:#64748b;">口径：该类目30天内无排期的城市</div>';
+    html += '<input type="text" id="detailCatFilter" placeholder="搜索城市..." style="width:100%;padding:5px 8px;margin-bottom:6px;border-radius:4px;border:1px solid #334155;background:#0f1923;color:#e2e8f0;font-size:11px;outline:none;">';
+    html += '<table class="data-table"><thead><tr><th>城市</th><th>省份</th><th>单店买全城</th><th>状态</th></tr></thead><tbody>';
+    var count = 0;
+    citiesWithCat.sort().forEach(function(city){
+      if(!occupiedCities[city]){
+        count++;
+        html += '<tr class="cat-row" data-city="'+city+'"><td>'+city+'</td><td>'+(CITY_PROVINCE[city]||'')+'</td><td><span class="status-badge badge-citywide">支持</span></td><td><span class="status-badge badge-available">可售</span></td></tr>';
+      }
+    });
+    html += '</tbody></table>';
+    if(count === 0) html = '<div class="detail-placeholder">该类目在所有城市均已被占</div>';
+    else html = '<div style="font-size:10px;color:#64748b;margin-bottom:6px;">共 '+count+' / '+totalCount+' 个城市可售</div>' + html;
+
+  } else if(currentTab === 'avail30'){
+    html = '<div style="margin-bottom:6px;font-size:10px;color:#64748b;">'+dateStr(addDays(today(),30))+' 当天可售的城市</div>';
+    html += '<input type="text" id="detailCatFilter" placeholder="搜索城市..." style="width:100%;padding:5px 8px;margin-bottom:6px;border-radius:4px;border:1px solid #334155;background:#0f1923;color:#e2e8f0;font-size:11px;outline:none;">';
+    html += '<table class="data-table"><thead><tr><th>城市</th><th>省份</th><th>状态</th></tr></thead><tbody>';
+    var count30 = 0;
+    var occupiedAt30Cities = {};
+    filteredData.forEach(function(d){ if(d.category===cat && isOccupiedAt30(d)) occupiedAt30Cities[d.city]=true; });
+    citiesWithCat.sort().forEach(function(city){
+      if(!occupiedAt30Cities[city]){
+        count30++;
+        html += '<tr class="cat-row" data-city="'+city+'"><td>'+city+'</td><td>'+(CITY_PROVINCE[city]||'')+'</td><td><span class="status-badge badge-available">可售</span></td></tr>';
+      }
+    });
+    html += '</tbody></table>';
+    if(count30 === 0) html = '<div class="detail-placeholder">D+30该类目在所有城市均已被占</div>';
+  }
+  document.getElementById('detailContent').innerHTML = html;
+  var cityFilter = document.getElementById('detailCatFilter');
+  if(cityFilter){
+    cityFilter.addEventListener('input', function(){
+      var q = this.value.toLowerCase();
+      document.querySelectorAll('.cat-row').forEach(function(r){
+        var city = r.getAttribute('data-city').toLowerCase();
+        var prov = (CITY_PROVINCE[r.getAttribute('data-city')]||'').toLowerCase();
+        r.style.display = (!q || city.indexOf(q)>=0 || prov.indexOf(q)>=0) ? '' : 'none';
+      });
+    });
+  }
+}
+
+// ==================== Data Transform ====================
+function transformApiData(rows){
+  if(!rows || !rows.length) return [];
+  function matchCity(rawCity){
+    if(!rawCity) return null;
+    if(cityCoords[rawCity]) return {name: rawCity, coords: cityCoords[rawCity]};
+    var stripped = rawCity.replace(/市$/, '');
+    if(cityCoords[stripped]) return {name: stripped, coords: cityCoords[stripped]};
+    stripped = rawCity.replace(/特别行政区$/, '');
+    if(cityCoords[stripped]) return {name: stripped, coords: cityCoords[stripped]};
+    stripped = rawCity.replace(/(藏族羌族自治州|藏族自治州|彝族自治州|朝鲜族自治州|土家族苗族自治州|傣族景颇族自治州|傣族自治州|布依族苗族自治州|白族自治州|黎族自治县|自治州|自治县|地区|盟)$/, '');
+    if(cityCoords[stripped]) return {name: stripped, coords: cityCoords[stripped]};
+    return null;
+  }
+  function normalizeDate(d){
+    if(!d) return '';
+    var s = String(d).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if(/^\d{8}$/.test(s)) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+    if(/^\d+$/.test(s) && parseInt(s) > 40000){
+      var utc_days = Math.floor(parseInt(s) - 25569);
+      var dt = new Date(utc_days * 86400 * 1000);
+      return dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
+    }
+    return s;
+  }
+  var data = [];
+  rows.forEach(function(row){
+    var product = row.product || '';
+    if(product !== '顶展') return;
+    var matched = matchCity(row.city || '');
+    if(!matched) return;
+    data.push({
+      city: matched.name, lat: matched.coords[0], lng: matched.coords[1],
+      category: row.industry || '', keyword: row.industry || '',
+      product: product, date: normalizeDate(row.date),
+      area_name: row.district || row.city || '',
+      industry_level1: row.industry_level1 || ''
+    });
+  });
+  return data;
+}
+
+// ==================== Init ====================
+function init(){
+  initSearchSelect('ssProvince', [], applyFilters);
+  initSearchSelect('ssCity', [], applyFilters);
+  initSearchSelect('ssCategory', [], applyFilters);
+  initFilters();
+  initMap(function(){
+    renderMap(); renderStats();
+  });
+  document.getElementById('dataTime').textContent = '数据更新: 请上传数据';
+}
+init();
+
+// ==================== Excel Upload ====================
+(function(){
+  var modal = document.getElementById('pasteModal');
+  var btnOpen = document.getElementById('btnUpdateData');
+  var btnClose = document.getElementById('btnCloseModal');
+  var btnParse = document.getElementById('btnParsePaste');
+  var dropZone = document.getElementById('dropZone');
+  var fileInput = document.getElementById('fileInput');
+  var fileInfo = document.getElementById('fileInfo');
+  var fileNameEl = document.getElementById('fileName');
+  var btnRemoveFile = document.getElementById('btnRemoveFile');
+  var status = document.getElementById('parseStatus');
+  var selectedFile = null;
+
+  function showModal(){ modal.style.display='flex'; status.textContent=''; }
+  function hideModal(){ modal.style.display='none'; selectedFile=null; fileInfo.style.display='none'; fileInput.value=''; }
+  btnOpen.addEventListener('click', showModal);
+  btnClose.addEventListener('click', hideModal);
+  modal.addEventListener('click', function(e){ if(e.target===modal) hideModal(); });
+
+  dropZone.addEventListener('click', function(){ fileInput.click(); });
+  dropZone.addEventListener('dragover', function(e){ e.preventDefault(); dropZone.style.borderColor='#3b82f6'; });
+  dropZone.addEventListener('dragleave', function(e){ e.preventDefault(); dropZone.style.borderColor='#334155'; });
+  dropZone.addEventListener('drop', function(e){
+    e.preventDefault(); dropZone.style.borderColor='#334155';
+    if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function(){ if(fileInput.files.length > 0) handleFile(fileInput.files[0]); });
+  btnRemoveFile.addEventListener('click', function(e){ e.stopPropagation(); selectedFile=null; fileInfo.style.display='none'; fileInput.value=''; });
+
+  function handleFile(file){
+    var ext = file.name.split('.').pop().toLowerCase();
+    if(['xlsx','xls','csv'].indexOf(ext)<0){ status.textContent='不支持的格式'; status.style.color='#ef4444'; return; }
+    selectedFile = file;
+    fileNameEl.textContent = file.name + ' (' + (file.size<1024*1024?(file.size/1024).toFixed(1)+'KB':(file.size/1048576).toFixed(1)+'MB') + ')';
+    fileInfo.style.display = 'block'; status.textContent = '';
+  }
+
+  btnParse.addEventListener('click', function(){
+    var pwd = document.getElementById('uploadPassword').value;
+    if(pwd !== '666888'){ status.textContent='密码错误，无权更新数据'; status.style.color='#ef4444'; return; }
+    if(!selectedFile){ status.textContent='请先选择文件'; status.style.color='#ef4444'; return; }
+    status.textContent='解析中...'; status.style.color='#94a3b8';
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        var jsonRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+        if(!jsonRows||!jsonRows.length){ status.textContent='文件为空'; status.style.color='#ef4444'; return; }
+        var rows = mapExcelRows(jsonRows);
+        if(!rows||!rows.length){ status.textContent='无有效数据行'; status.style.color='#f59e0b'; return; }
+        var dashData = transformApiData(rows);
+        if(!dashData.length){ status.textContent='无匹配城市'; status.style.color='#f59e0b'; return; }
+        try { localStorage.setItem('brand_ad_map_data', JSON.stringify(rows)); } catch(ex){}
+        refreshDashboard(dashData, '上传·'+dashData.length+'条');
+        hideModal();
+      } catch(ex){ status.textContent='解析出错: '+ex.message; status.style.color='#ef4444'; }
+    };
+    reader.readAsArrayBuffer(selectedFile);
+  });
+
+  function mapExcelRows(jsonRows){
+    var fieldMap = {'date':'date','日期':'date','date_time':'date','city':'city','城市':'city','city_name':'city','district':'district','区域':'district','area_name':'district','industry_level1':'industry_level1','一级行业':'industry_level1','biz_parent':'industry_level1','industry':'industry','二级行业':'industry','行业':'industry','biz_name':'industry','product':'product','产品':'product','scene':'product'};
+    var keys = Object.keys(jsonRows[0]);
+    var colMapping = {};
+    keys.forEach(function(k){ var m = fieldMap[k.trim().toLowerCase()]; if(m&&!colMapping[m]) colMapping[m]=k; });
+    if(!colMapping.city){
+      var order=['date','city','district','industry_level1','industry','product'];
+      order.forEach(function(f,i){ if(i<keys.length) colMapping[f]=keys[i]; });
+    }
+    if(!colMapping.city) return null;
+    var rows = [];
+    jsonRows.forEach(function(raw){
+      var row = {};
+      Object.keys(colMapping).forEach(function(f){
+        var v = raw[colMapping[f]];
+        row[f] = (f==='date'&&typeof v==='number') ? excelDateToStr(v) : (v!=null?String(v).trim():'');
+      });
+      if(row.city) rows.push(row);
+    });
+    return rows;
+  }
+  function excelDateToStr(serial){ var d=new Date((Math.floor(serial-25569))*86400000); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+  // Load cache
+  try {
+    var cached = localStorage.getItem('brand_ad_map_data');
+    if(cached){
+      var cachedData = transformApiData(JSON.parse(cached));
+      if(cachedData.length > 0) refreshDashboard(cachedData, '缓存·'+cachedData.length+'条');
+    }
+  } catch(e){}
+})();
+
+function refreshDashboard(data, label){
+  rawData = data; filteredData = data;
+  buildAllKeywords(data);
+  initFilters();
+  applyFilters();
+  selectedCity = '';
+  document.getElementById('detailTabs').style.display = 'none';
+  document.getElementById('detailTitle').textContent = '点击地图城市查看详情';
+  document.getElementById('detailSubtitle').textContent = '选择城市后展示占量明细与可售空位';
+  document.getElementById('detailContent').innerHTML = '<div class="detail-placeholder">点击左侧地图城市气泡<br>查看该城市占量明细与空余坑位</div>';
+  document.getElementById('dataTime').textContent = '数据更新: ' + dateStr(today()) + ' (' + label + ')';
+}
+
+
+// ==================== 统计维度切换 ====================
+document.getElementById('statsDim').addEventListener('click', function(e){
+  var btn = e.target.closest('.stats-dim-btn');
+  if(!btn) return;
+  statsDimension = btn.getAttribute('data-dim');
+  this.querySelectorAll('.stats-dim-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderStats();
+});
+
+// ==================== 旅游热门筛选 ====================
+document.getElementById('btnTourism').addEventListener('click', function(){
+  tourismOnly = !tourismOnly;
+  this.classList.toggle('active', tourismOnly);
+  applyFilters();
+});
+
+// ==================== 关键词查询功能 ====================
+(function(){
+  var kwModal = document.getElementById('keywordModal');
+  var kwInput = document.getElementById('keywordSearchInput');
+  var kwResults = document.getElementById('keywordResults');
+  var btnOpen = document.getElementById('btnKeywordSearch');
+  var btnClose = document.getElementById('btnCloseKeyword');
+
+  btnOpen.addEventListener('click', function(){ kwModal.style.display='flex'; kwInput.focus(); });
+  btnClose.addEventListener('click', function(){ kwModal.style.display='none'; });
+  kwModal.addEventListener('click', function(e){ if(e.target===kwModal) kwModal.style.display='none'; });
+
+  kwInput.addEventListener('input', function(){
+    var q = this.value.trim().toLowerCase();
+    if(!q){ kwResults.innerHTML='<div style="color:#64748b;font-size:12px;text-align:center;padding:20px;">输入类目名称开始搜索</div>'; return; }
+    var html = '';
+    var matchCount = 0;
+    Object.keys(CAT_KEYWORDS).forEach(function(cat){
+      if(cat.toLowerCase().indexOf(q) >= 0){
+        matchCount++;
+        var kws = CAT_KEYWORDS[cat];
+        html += '<div style="margin-bottom:12px;padding:10px 12px;background:#0f1923;border:1px solid #334155;border-radius:6px;">';
+        html += '<div style="font-size:12px;font-weight:600;color:#3b82f6;margin-bottom:6px;">'+cat+'</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        kws.forEach(function(kw){
+          html += '<span style="padding:2px 8px;background:#1e293b;border:1px solid #475569;border-radius:4px;font-size:11px;color:#e2e8f0;">'+kw+'</span>';
+        });
+        html += '</div>';
+        html += '<div style="font-size:10px;color:#64748b;margin-top:4px;">共 '+kws.length+' 个关键词</div>';
+        html += '</div>';
+      }
+    });
+    if(matchCount === 0) html = '<div style="color:#64748b;font-size:12px;text-align:center;padding:20px;">未找到匹配的类目</div>';
+    else html = '<div style="font-size:10px;color:#94a3b8;margin-bottom:8px;">找到 '+matchCount+' 个匹配类目</div>' + html;
+    kwResults.innerHTML = html;
+  });
+})();
+
+</script>
+</body>
+</html>
+</html>
+</html>
+</html>
+</html>
+</html>
+</html>
+</html>
+</html>
