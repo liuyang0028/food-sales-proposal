@@ -102,6 +102,7 @@ body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #0f1
     <button id="btnKeywordSearch" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#065f46;color:#fff;font-size:11px;cursor:pointer;">关键词查询</button>
     <a href="https://fbi.alibaba-inc.com/fbi/chatbi/show_visualization.htm?uid=26bb11b85e234a17ab314de691c727bb" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#7c3aed;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">高频顶展2.0价格查询工具AI版</a>
     <a href="https://alidocs.dingtalk.com/i/nodes/R1zknDm0WR3Q1AoXtxzvy2qoVBQEx5rG" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#b45309;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">顶展产品文档</a>
+    <button id="btnDateCalc" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#0369a1;color:#fff;font-size:11px;cursor:pointer;">日期计算</button>
     <button id="btnUpdateData" title="更新数据" style="padding:4px 8px;border-radius:6px;border:1px solid #334155;background:transparent;color:#64748b;font-size:14px;cursor:pointer;line-height:1;">&#9881;</button>
     <span class="data-time" id="dataTime">数据更新: --</span>
   </div>
@@ -215,6 +216,50 @@ body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #0f1
     </div>
     <div class="detail-content" id="detailContent">
       <div class="detail-placeholder">点击左侧地图城市气泡<br>查看该城市占量明细与空余坑位</div>
+    </div>
+  </div>
+</div>
+
+<!-- Date Calculator Modal -->
+<div id="dateCalcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:12px;padding:24px;width:380px;max-width:90%;color:#e2e8f0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:15px;">日期推算器</h3>
+      <span id="dateCalcClose" style="cursor:pointer;font-size:20px;color:#94a3b8;">&times;</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">起始日期（默认今天）</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" id="dcYear" style="width:70px;padding:6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:13px;">
+        <span>年</span>
+        <input type="number" id="dcMonth" min="1" max="12" style="width:50px;padding:6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:13px;">
+        <span>月</span>
+        <input type="number" id="dcDay" min="1" max="31" style="width:50px;padding:6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:13px;">
+        <span>日</span>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px;">推算</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select id="dcDir" style="padding:6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:13px;">
+          <option value="1">往后</option>
+          <option value="-1">往前</option>
+        </select>
+        <input type="number" id="dcDays" value="30" min="1" style="width:70px;padding:6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:13px;">
+        <span>天</span>
+        <button id="dcCalcBtn" style="padding:6px 14px;border-radius:4px;border:none;background:#3b82f6;color:#fff;font-size:12px;cursor:pointer;">计算</button>
+      </div>
+    </div>
+    <div id="dcResult" style="padding:12px;background:#0f172a;border-radius:6px;font-size:14px;text-align:center;color:#fbbf24;min-height:20px;"></div>
+    <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:6px;font-size:11px;color:#94a3b8;">
+      <div style="margin-bottom:4px;font-weight:600;color:#e2e8f0;">快捷计算</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="dc-quick" data-days="7" style="padding:3px 8px;background:#334155;border-radius:3px;cursor:pointer;">+7天</span>
+        <span class="dc-quick" data-days="14" style="padding:3px 8px;background:#334155;border-radius:3px;cursor:pointer;">+14天</span>
+        <span class="dc-quick" data-days="30" style="padding:3px 8px;background:#334155;border-radius:3px;cursor:pointer;">+30天</span>
+        <span class="dc-quick" data-days="60" style="padding:3px 8px;background:#334155;border-radius:3px;cursor:pointer;">+60天</span>
+        <span class="dc-quick" data-days="90" style="padding:3px 8px;background:#334155;border-radius:3px;cursor:pointer;">+90天</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1158,7 +1203,59 @@ document.getElementById('btnTourism').addEventListener('click', function(){
   });
 })();
 
+
+// ==================== 日期计算器 ====================
+(function(){
+  var modal = document.getElementById('dateCalcModal');
+  var weekNames = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+
+  function setToday(){
+    var t = new Date();
+    document.getElementById('dcYear').value = t.getFullYear();
+    document.getElementById('dcMonth').value = t.getMonth()+1;
+    document.getElementById('dcDay').value = t.getDate();
+  }
+
+  function calcDate(){
+    var y = parseInt(document.getElementById('dcYear').value);
+    var m = parseInt(document.getElementById('dcMonth').value)-1;
+    var d = parseInt(document.getElementById('dcDay').value);
+    var days = parseInt(document.getElementById('dcDays').value) || 0;
+    var dir = parseInt(document.getElementById('dcDir').value);
+    var base = new Date(y, m, d);
+    if(isNaN(base.getTime())){ document.getElementById('dcResult').textContent = '日期无效'; return; }
+    var result = new Date(base);
+    result.setDate(result.getDate() + days * dir);
+    var ry = result.getFullYear();
+    var rm = result.getMonth()+1;
+    var rd = result.getDate();
+    var wk = weekNames[result.getDay()];
+    document.getElementById('dcResult').innerHTML = '<strong>'+ry+'年'+rm+'月'+rd+'日 '+wk+'</strong><br><span style="font-size:11px;color:#94a3b8;">从'+y+'年'+(m+1)+'月'+d+'日'+(dir>0?'往后':'往前')+days+'天</span>';
+  }
+
+  document.getElementById('btnDateCalc').addEventListener('click', function(){
+    setToday();
+    document.getElementById('dcResult').innerHTML = '';
+    modal.style.display = 'flex';
+    calcDate();
+  });
+  document.getElementById('dateCalcClose').addEventListener('click', function(){ modal.style.display='none'; });
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.style.display='none'; });
+  document.getElementById('dcCalcBtn').addEventListener('click', calcDate);
+  document.querySelectorAll('.dc-quick').forEach(function(el){
+    el.addEventListener('click', function(){
+      document.getElementById('dcDays').value = this.getAttribute('data-days');
+      document.getElementById('dcDir').value = '1';
+      calcDate();
+    });
+  });
+  ['dcYear','dcMonth','dcDay','dcDays'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Enter') calcDate(); });
+  });
+})();
+
 </script>
+
 </body>
 </html>
 </html>
