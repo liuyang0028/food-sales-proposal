@@ -100,6 +100,7 @@ body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #0f1
   </div>
   <div class="header-right">
     <button id="btnKeywordSearch" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#065f46;color:#fff;font-size:11px;cursor:pointer;">关键词查询</button>
+    <a href="https://liuyang0028.github.io/food-sales-proposal/" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#dc2626;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">美食智能提案工具</a>
     <a href="https://fbi.alibaba-inc.com/fbi/chatbi/show_visualization.htm?uid=26bb11b85e234a17ab314de691c727bb" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#7c3aed;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">高频顶展2.0价格查询工具AI版</a>
     <a href="https://alidocs.dingtalk.com/i/nodes/R1zknDm0WR3Q1AoXtxzvy2qoVBQEx5rG" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#b45309;color:#fff;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;">顶展产品文档</a>
     <button id="btnDateCalc" style="padding:6px 14px;border-radius:6px;border:1px solid #334155;background:#0369a1;color:#fff;font-size:11px;cursor:pointer;">日期计算</button>
@@ -1145,7 +1146,7 @@ init();
           var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
           a.download = 'brand-ad-map.html'; a.click();
         });
-        hideModal();
+        // 不自动关闭弹窗，让用户看到发布按钮
       } catch(ex){ status.textContent='解析出错: '+ex.message; status.style.color='#ef4444'; }
     };
     reader.readAsArrayBuffer(selectedFile);
