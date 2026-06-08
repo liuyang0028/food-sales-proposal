@@ -852,12 +852,22 @@ function renderDetailTab(city, catMap){
     html += '<table class="data-table"><thead><tr><th>类目</th><th>区域</th><th>占量日期</th><th>状态</th><th>时段</th></tr></thead><tbody>';
     Object.keys(catMap).sort().forEach(function(cat){
       catMap[cat].forEach(function(item){
-        var b30 = isOccupiedBefore30(item);
         var period = item.date || (item.start_date+' ~ '+item.end_date);
-        var timeTag = b30 ? '30天内' : '>30天';
-        var timeClass = b30 ? 'badge-key' : 'badge-date';
+        var t = today();
+        var itemEnd = item.date ? parseDate(item.date) : parseDate(item.end_date);
+        var itemStart = item.date ? parseDate(item.date) : parseDate(item.start_date);
+        var statusText, statusClass, timeTag, timeClass;
+        if(itemEnd < t){
+          statusText = '已过期'; statusClass = 'badge-date';
+          timeTag = '已结束'; timeClass = 'badge-date';
+        } else {
+          statusText = '已占'; statusClass = 'badge-occupied';
+          var b30 = isOccupiedBefore30(item);
+          timeTag = b30 ? '30天内' : '>30天';
+          timeClass = b30 ? 'badge-key' : 'badge-date';
+        }
         html += '<tr class="filterable-row" data-cat="'+item.category+'"><td>'+item.category+(isKeyCategory(item.category)?' <span class="status-badge badge-key">重点</span>':'')+'</td><td>'+(item.area_name||'')+'</td><td>'+period+'</td>';
-        html += '<td><span class="status-badge badge-occupied">已占</span></td>';
+        html += '<td><span class="status-badge '+statusClass+'">'+statusText+'</span></td>';
         html += '<td><span class="status-badge '+timeClass+'">'+timeTag+'</span></td></tr>';
       });
     });
