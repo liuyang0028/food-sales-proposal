@@ -849,15 +849,16 @@ function renderDetailTab(city, catMap){
 
   if(currentTab === 'all'){
     html = '<input type="text" id="detailTabFilter" placeholder="搜索类目..." style="width:100%;padding:4px 8px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;box-sizing:border-box;">';
-    html += '<table class="data-table"><thead><tr><th>类目</th><th>区域</th><th>占量日期</th><th>D+30前</th><th>D+30</th></tr></thead><tbody>';
+    html += '<table class="data-table"><thead><tr><th>类目</th><th>区域</th><th>占量日期</th><th>状态</th><th>时段</th></tr></thead><tbody>';
     Object.keys(catMap).sort().forEach(function(cat){
       catMap[cat].forEach(function(item){
         var b30 = isOccupiedBefore30(item);
-        var a30 = isOccupiedAt30(item);
         var period = item.date || (item.start_date+' ~ '+item.end_date);
+        var timeTag = b30 ? '30天内' : '>30天';
+        var timeClass = b30 ? 'badge-key' : 'badge-date';
         html += '<tr class="filterable-row" data-cat="'+item.category+'"><td>'+item.category+(isKeyCategory(item.category)?' <span class="status-badge badge-key">重点</span>':'')+'</td><td>'+(item.area_name||'')+'</td><td>'+period+'</td>';
-        html += '<td><span class="status-badge '+(b30?'badge-occupied':'badge-available')+'">'+(b30?'已占':'可售')+'</span></td>';
-        html += '<td><span class="status-badge '+(a30?'badge-occupied':'badge-available')+'">'+(a30?'已占':'可售')+'</span></td></tr>';
+        html += '<td><span class="status-badge badge-occupied">已占</span></td>';
+        html += '<td><span class="status-badge '+timeClass+'">'+timeTag+'</span></td></tr>';
       });
     });
     html += '</tbody></table>';
