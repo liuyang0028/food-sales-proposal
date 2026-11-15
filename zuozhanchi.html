@@ -321,7 +321,7 @@ function showChannel(accessCode) {
   if (!prov) return;
 
   // 追踪访问
-  trackVisit({type: '渠道', accessCode: accessCode, provider: prov.providerName, manager: prov.manager});
+  trackVisit({type: '渠道', accessCode: accessCode, provider: prov.providerName});
 
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
@@ -331,7 +331,7 @@ function showChannel(accessCode) {
   // Provider header
   document.getElementById('provName').textContent = prov.providerName;
   document.getElementById('provRegion').textContent = prov.region || '-';
-  document.getElementById('provMgr').textContent = prov.manager || '-';
+  
   document.getElementById('provEmpCnt').textContent = prov.employeeCount;
   document.getElementById('provPidCnt').textContent = prov.totalPids;
 
@@ -473,27 +473,26 @@ function copyPid(pid, btn) {
 
 // ── Visitor Tracking (使用jsonbin.io) ──
 // ══════════════════════════════════════════════════
-// 访问追踪配置 - 选择以下任一方案
+// 访问追踪 - 使用jsonbin.io存储访问记录
+// 设置步骤:
+// 1. 访问 https://jsonbin.io 用GitHub登录
+// 2. 点击 Create Bin，内容填 []
+// 3. 复制 Bin ID 替换下面的 YOUR_BIN_ID
+// 4. 复制 Master Key 替换下面的 YOUR_API_KEY
+// 5. 访问记录可在 jsonbin.io 后台查看
 // ══════════════════════════════════════════════════
 const TRACK_CONFIG = {
-  // 方案1: jsonbin.io (推荐，免费，可存储完整记录)
-  // 注册 https://jsonbin.io → 创建Bin → 填入下面
-  type: 'jsonbin',  // 可选: 'jsonbin' | 'webhook' | 'console'
   apiUrl: 'https://api.jsonbin.io/v3/b/YOUR_BIN_ID',
   apiKey: 'YOUR_API_KEY',
-  
-  // 方案2: Webhook (推送到钉钉/飞书机器人)
-  // type: 'webhook',
-  // webhookUrl: 'https://oapi.dingtalk.com/robot/send?access_token=xxx',
-  
-  // 方案3: 仅控制台输出 (调试用)
-  // type: 'console',
-  
   enabled: true
 };
 
 function trackVisit(info) {
   if (!TRACK_CONFIG.enabled) return;
+  if (TRACK_CONFIG.apiKey === 'YOUR_API_KEY') {
+    console.log('[追踪] 请先配置 TRACK_CONFIG');
+    return;
+  }
   
   // 同一浏览器每天只记录一次
   const today = new Date().toISOString().slice(0, 10);
@@ -507,58 +506,27 @@ function trackVisit(info) {
     ...info
   };
   
-  console.log('[访问记录]', record);
-  
-  const type = TRACK_CONFIG.type || 'console';
-  
-  if (type === 'console') {
-    // 仅输出到控制台
-    return;
-  }
-  
-  if (type === 'jsonbin') {
-    // 方案1: 存储到jsonbin.io
-    fetch(TRACK_CONFIG.apiUrl, {
-      method: 'GET',
-      headers: { 'X-Master-Key': TRACK_CONFIG.apiKey }
-    })
-    .then(r => r.json())
-    .then(data => {
-      const visits = data.record || [];
-      visits.push(record);
-      return fetch(TRACK_CONFIG.apiUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': TRACK_CONFIG.apiKey
-        },
-        body: JSON.stringify(visits.slice(-1000))
-      });
-    })
-    .then(() => console.log('[追踪] jsonbin记录成功'))
-    .catch(e => console.warn('[追踪] 失败:', e));
-  }
-  
-  if (type === 'webhook') {
-    // 方案2: 推送到钉钉/飞书机器人
-    const text = `🔔 作战池访问记录
-时间: ${record.time}
-类型: ${record.type === '渠道' ? '渠道服务商' : '电销'}
-${record.type === '渠道' ? `访问码: ${record.accessCode}
-服务商: ${record.provider}
-渠道经理: ${record.manager}` : `工号: ${record.empId}
-姓名: ${record.name}
-团队: ${record.team}`}`;
-    
-    fetch(TRACK_CONFIG.webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        msgtype: 'text',
-        text: { content: text }
-      })
-    }).catch(e => console.warn('[追踪] webhook失败:', e));
-  }
+  // 获取现有记录并追加
+  fetch(TRACK_CONFIG.apiUrl, {
+    method: 'GET',
+    headers: { 'X-Master-Key': TRACK_CONFIG.apiKey }
+  })
+  .then(r => r.json())
+  .then(data => {
+    const visits = data.record || [];
+    visits.push(record);
+    // 保留最近5000条
+    return fetch(TRACK_CONFIG.apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': TRACK_CONFIG.apiKey
+      },
+      body: JSON.stringify(visits.slice(-5000))
+    });
+  })
+  .then(() => console.log('[访问记录]', record))
+  .catch(e => console.warn('[追踪失败]', e));
 }
 
 
