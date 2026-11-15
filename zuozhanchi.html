@@ -124,7 +124,10 @@ tr.expanded{background:#FFF8F0}
 <div class="container" id="mainPage" style="display:none">
   <header>
     <h1 id="pageTitle">作战池</h1>
-    <button class="logout-btn" onclick="doLogout()">退出登录</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="logout-btn" id="downloadBtn" onclick="downloadDetail()" style="display:none;background:#27AE60;border-color:#27AE60" title="下载全部门店明细">📥 下载明细</button>
+      <button class="logout-btn" onclick="doLogout()">退出登录</button>
+    </div>
   </header>
 
   <!-- Provider header (channel mode) -->
@@ -265691,6 +265694,9 @@ const DATA = {
 let mode = null;       // 'telesales' | 'channel'
 let currentPids = [];  // current person's PID list
 let currentFilter = 'all';
+let currentPersonId = '';   // 工号 or 访问码
+let currentPersonLabel = ''; // 姓名 or 服务商名
+let currentTeamLabel = '';   // 团队 info
 
 // ── Login ──
 document.getElementById('loginInput').addEventListener('keydown', e => {
@@ -265791,6 +265797,8 @@ function doLogout() {
   document.getElementById('loginInput').value = '';
   document.getElementById('loginError').style.display = 'none';
   document.getElementById('quickPanel') && (document.getElementById('quickPanel').style.display = 'none');
+  document.getElementById('downloadBtn').style.display = 'none';
+  currentPids = [];
 }
 
 // ── Telesales view ──
@@ -265801,11 +265809,17 @@ function showTelesales(empId) {
   // 追踪访问
   trackVisit({type: '电销', empId: empId, name: emp.realName || emp.name, team: emp.l5});
 
+  // Set person info for download
+  currentPersonId = empId;
+  currentPersonLabel = emp.realName || emp.name;
+  currentTeamLabel = [emp.team, emp.l5, emp.l6, emp.role].filter(Boolean).join(' · ');
+
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
   document.getElementById('providerSection').style.display = 'none';
   document.getElementById('personSection').style.display = 'block';
   document.getElementById('pageTitle').textContent = '电销 · 个人作战池';
+  document.getElementById('downloadBtn').style.display = 'inline-block';
 
   // Person header
   document.getElementById('personName').textContent = `${emp.realName || emp.name}（${empId}）`;
@@ -265835,10 +265849,16 @@ function showChannel(accessCode) {
     pidCount: prov.pidCount || (prov.pids ? prov.pids.length : 0)
   });
 
+  // Set provider info for download (will be updated per-employee in showEmpDetail)
+  currentPersonId = accessCode;
+  currentPersonLabel = prov.providerName || '';
+  currentTeamLabel = prov.team || '';
+
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
   document.getElementById('providerSection').style.display = 'block';
   document.getElementById('pageTitle').textContent = '渠道 · 服务商作战池';
+  document.getElementById('downloadBtn').style.display = 'inline-block';
 
   // Provider header
   document.getElementById('provName').textContent = prov.providerName;
@@ -265877,6 +265897,11 @@ function showEmpDetail(prov, empId) {
   document.getElementById('personSection').style.display = 'block';
   document.getElementById('personName').textContent = `${emp.name || emp.realName}（${empId}）`;
   document.getElementById('personMeta').innerHTML = `渠道 · ${prov.providerName} · PID <b>${emp.pidCount}</b> 个`;
+
+  // Update person info for download
+  currentPersonId = emp.empId || empId;
+  currentPersonLabel = `${emp.name || emp.realName}（${prov.providerName}）`;
+  currentTeamLabel = `渠道 · ${prov.providerName}`;
 
   // Update stats
   renderStats(emp.p0, emp.p1, emp.p2, emp.pidCount, emp.totalPhone);
@@ -265990,7 +266015,70 @@ function copyPid(pid, btn) {
   });
 }
 
-// ── Visitor Tracking (使用jsonbin.io) ──
+// ── Download Detail (CSV) ──
+function downloadDetail() {
+  if (!currentPids || currentPids.length === 0) { alert('无数据可下载'); return; }
+
+  // CSV header
+  const headers = ['姓名/服务商','工号/访问码','团队','PID','P级','近90天PID电话量','门店ID','POI','门店名称','城市','区县','二级类目','门店电话量','广告状态'];
+  const rows = [headers.join(',')];
+
+  // BOM for Excel UTF-8
+  const BOM = '\uFEFF';
+
+  currentPids.forEach(p => {
+    const stores = p.storeList || [];
+    if (stores.length === 0) {
+      // PID with no store detail — still output a row
+      rows.push([
+        csv(currentPersonLabel), csv(currentPersonId), csv(currentTeamLabel),
+        csv(p.pid), csv(p.level), p.phone || 0,
+        '', '', '', '', '', '', '', ''
+      ].join(','));
+    } else {
+      stores.forEach(s => {
+        rows.push([
+          csv(currentPersonLabel),
+          csv(currentPersonId),
+          csv(currentTeamLabel),
+          csv(p.pid),
+          csv(p.level),
+          p.phone || 0,
+          csv(s.shopId || ''),
+          csv(s.poi || ''),
+          csv(s.name || ''),
+          csv(s.city || ''),
+          csv(s.district || ''),
+          csv(s.cat2 || ''),
+          s.phone || 0,
+          csv(s.adStatus || '')
+        ].join(','));
+      });
+    }
+  });
+
+  const blob = new Blob([BOM + rows.join('\n')], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeName = currentPersonLabel.replace(/[^\w\u4e00-\u9fff]/g, '_').substring(0, 30);
+  a.download = `作战池明细_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function csv(v) {
+  // Escape CSV field: wrap in quotes if contains comma/quote/newline
+  const s = String(v == null ? '' : v);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+// ── Visitor Tracking (使用jsonbin.io） ──
 // ══════════════════════════════════════════════════
 // 访问追踪 - 使用jsonbin.io存储访问记录
 // 设置步骤:
