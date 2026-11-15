@@ -125,7 +125,7 @@ tr.expanded{background:#FFF8F0}
   <header>
     <h1 id="pageTitle">作战池</h1>
     <div style="display:flex;gap:10px;align-items:center">
-      <button class="logout-btn" id="downloadBtn" onclick="downloadDetail()" style="display:none;background:#27AE60;border-color:#27AE60" title="下载全部门店明细">📥 下载明细</button>
+      <button class="logout-btn" id="downloadBtn" onclick="copyAllDetail()" style="display:none;background:#27AE60;border-color:#27AE60" title="一键复制全部门店明细到剪贴板">📋 复制全部明细</button>
       <button class="logout-btn" onclick="doLogout()">退出登录</button>
     </div>
   </header>
@@ -266015,67 +266015,64 @@ function copyPid(pid, btn) {
   });
 }
 
-// ── Download Detail (CSV) ──
-function downloadDetail() {
-  if (!currentPids || currentPids.length === 0) { alert('无数据可下载'); return; }
+// ── Copy All Detail to Clipboard (Tab分隔，可直接粘贴到Excel) ──
+function copyAllDetail() {
+  if (!currentPids || currentPids.length === 0) { alert('无数据可复制'); return; }
 
-  // CSV header
+  // Tab-separated header
   const headers = ['姓名/服务商','工号/访问码','团队','PID','P级','近90天PID电话量','门店ID','POI','门店名称','城市','区县','二级类目','门店电话量','广告状态'];
-  const rows = [headers.join(',')];
-
-  // BOM for Excel UTF-8
-  const BOM = '\uFEFF';
+  const rows = [headers.join('\t')];
 
   currentPids.forEach(p => {
     const stores = p.storeList || [];
     if (stores.length === 0) {
-      // PID with no store detail — still output a row
-      rows.push([
-        csv(currentPersonLabel), csv(currentPersonId), csv(currentTeamLabel),
-        csv(p.pid), csv(p.level), p.phone || 0,
-        '', '', '', '', '', '', '', ''
-      ].join(','));
+      rows.push([currentPersonLabel, currentPersonId, currentTeamLabel, p.pid, p.level, p.phone||0, '','','','','','','',''].join('\t'));
     } else {
       stores.forEach(s => {
         rows.push([
-          csv(currentPersonLabel),
-          csv(currentPersonId),
-          csv(currentTeamLabel),
-          csv(p.pid),
-          csv(p.level),
+          currentPersonLabel,
+          currentPersonId,
+          currentTeamLabel,
+          p.pid,
+          p.level,
           p.phone || 0,
-          csv(s.shopId || ''),
-          csv(s.poi || ''),
-          csv(s.name || ''),
-          csv(s.city || ''),
-          csv(s.district || ''),
-          csv(s.cat2 || ''),
+          s.shopId || '',
+          s.poi || '',
+          s.name || '',
+          s.city || '',
+          s.district || '',
+          s.cat2 || '',
           s.phone || 0,
-          csv(s.adStatus || '')
-        ].join(','));
+          s.adStatus || ''
+        ].join('\t'));
       });
     }
   });
 
-  const blob = new Blob([BOM + rows.join('\n')], {type: 'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const safeName = currentPersonLabel.replace(/[^\w\u4e00-\u9fff]/g, '_').substring(0, 30);
-  a.download = `作战池明细_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+  const text = rows.join('\n');
 
-function csv(v) {
-  // Escape CSV field: wrap in quotes if contains comma/quote/newline
-  const s = String(v == null ? '' : v);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return '"' + s.replace(/"/g, '""') + '"';
-  }
-  return s;
+  // Copy to clipboard
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('downloadBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ 已复制 ' + currentPids.length + ' 个PID';
+    btn.style.background = '#27AE60';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  }).catch(() => {
+    // Fallback: textarea + execCommand
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById('downloadBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ 已复制 ' + currentPids.length + ' 个PID';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
 }
 
 // ── Visitor Tracking (使用jsonbin.io） ──
