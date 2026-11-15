@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>oCPC客资产品全员培训 · 实战手册</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#FDFBF6;--red:#C0392B;--coral:#E8735A;--gold:#F5B041;--green:#27AE60;--dark:#2C3E50;--gray:#7F8C8D;--light:#ECF0F1}
+body{background:var(--cream);color:var(--dark);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8;font-size:15px}
+.container{max-width:960px;margin:0 auto;padding:20px}
+
+/* Cover */
+.cover{text-align:center;padding:70px 20px 60px;background:linear-gradient(135deg,var(--red),var(--coral));color:#fff;border-radius:0 0 40px 40px;margin-bottom:40px}
+.cover h1{font-size:40px;font-weight:800;margin-bottom:10px;letter-spacing:2px}
+.cover .sub{font-size:17px;opacity:.9;margin-bottom:24px}
+.cover .tag{display:inline-block;background:rgba(255,255,255,.2);padding:5px 16px;border-radius:20px;font-size:12px;margin:3px}
+.cover .date{margin-top:24px;font-size:13px;opacity:.7}
+
+/* Section */
+.section{margin-bottom:48px}
+.section-title{font-size:26px;font-weight:800;color:var(--red);margin-bottom:6px;padding-bottom:8px;border-bottom:3px solid var(--gold)}
+.section-subtitle{font-size:15px;color:var(--gray);margin-bottom:20px}
+
+/* Gold sentence */
+.gold-sentence{background:linear-gradient(135deg,#FFF8E1,#FFF3CD);border-left:4px solid var(--gold);padding:14px 18px;border-radius:0 12px 12px 0;margin:18px 0;font-size:16px;font-weight:600;color:var(--dark)}
+
+/* Cards */
+.card{background:#fff;border-radius:14px;padding:22px;margin:14px 0;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.card h3{font-size:17px;color:var(--red);margin-bottom:10px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:18px 0}
+
+/* Comparison table */
+.cmp-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+.cmp-table th{background:var(--red);color:#fff;padding:10px 14px;text-align:left;font-weight:600}
+.cmp-table td{padding:10px 14px;border-bottom:1px solid var(--light)}
+.cmp-table tr:nth-child(even){background:#FAFAFA}
+.cmp-table .highlight{background:#FFF8E1;font-weight:600}
+
+/* Source tag */
+.source-tag{display:inline-block;background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px;vertical-align:middle}
+
+/* Case card */
+.case-card{background:#fff;border-radius:14px;padding:22px;margin:18px 0;border:2px solid var(--light);position:relative;overflow:hidden}
+.case-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:4px;background:linear-gradient(90deg,var(--red),var(--coral),var(--gold))}
+.case-card .case-tag{display:inline-block;background:var(--coral);color:#fff;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;margin-right:4px}
+.case-card h4{font-size:16px;margin:8px 0 6px;color:var(--dark)}
+.case-card .case-metric{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.case-card .metric{background:var(--cream);padding:7px 14px;border-radius:8px;text-align:center;flex:1;min-width:90px}
+.case-card .metric .num{font-size:20px;font-weight:800;color:var(--red)}
+.case-card .metric .label{font-size:11px;color:var(--gray)}
+
+/* Policy box */
+.policy-box{background:linear-gradient(135deg,#FFF5F5,#FFE8E8);border:2px solid var(--red);border-radius:14px;padding:22px;margin:18px 0}
+.policy-box h3{color:var(--red);font-size:18px;margin-bottom:14px}
+
+/* Flow diagram */
+.flow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:20px 0}
+.flow-step{background:#fff;border:2px solid var(--coral);border-radius:10px;padding:10px 16px;text-align:center;font-weight:600;font-size:13px;min-width:110px}
+.flow-arrow{color:var(--coral);font-size:22px;font-weight:bold}
+
+/* Script box */
+.script-box{background:#F8F9FA;border-radius:10px;padding:18px;margin:14px 0;border-left:4px solid var(--green)}
+.script-box .scene{font-size:13px;color:var(--coral);font-weight:700;margin-bottom:6px}
+.script-box .dialogue{font-size:14px;line-height:1.9;color:var(--dark)}
+
+/* FAQ */
+.faq-item{background:#fff;border-radius:10px;padding:18px;margin:10px 0;box-shadow:0 1px 5px rgba(0,0,0,.04)}
+.faq-item .q{font-weight:700;color:var(--red);margin-bottom:6px;font-size:14px}
+.faq-item .a{color:var(--dark);font-size:14px;line-height:1.8}
+
+/* Badge */
+.badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600}
+.badge-red{background:#FDEDEC;color:var(--red)}
+.badge-green{background:#E8F8F0;color:var(--green)}
+.badge-gold{background:#FFF8E1;color:#D4A017}
+
+/* Quick ref */
+.quick-ref{background:var(--dark);color:#fff;border-radius:14px;padding:28px;margin:24px 0}
+.quick-ref h3{color:var(--gold);font-size:18px;margin-bottom:14px}
+.quick-ref .qr-item{margin:10px 0;padding:10px;background:rgba(255,255,255,.08);border-radius:8px;font-size:14px;line-height:1.8}
+.quick-ref .qr-item strong{color:var(--gold)}
+
+/* Explain box */
+.explain-box{background:#FFF8E1;border-radius:10px;padding:14px 18px;margin:14px 0;border-left:4px solid var(--gold)}
+.explain-box .term{font-weight:700;color:var(--dark);margin-bottom:4px;font-size:14px}
+.explain-box .def{font-size:13px;color:var(--dark);line-height:1.8}
+
+/* Target profile */
+.profile-card{display:flex;align-items:center;gap:14px;background:#fff;border-radius:10px;padding:14px 18px;margin:10px 0;border:1px solid var(--light)}
+.profile-icon{font-size:32px}
+.profile-info h4{font-size:14px;margin-bottom:3px}
+.profile-info p{font-size:13px;color:var(--gray)}
+
+/* Nav dots */
+.nav-bar{position:sticky;top:0;z-index:100;background:rgba(253,251,246,.95);backdrop-filter:blur(10px);padding:10px 0;border-bottom:1px solid var(--light);margin-bottom:24px}
+.nav-bar .nav-inner{max-width:960px;margin:0 auto;display:flex;flex-wrap:wrap;gap:6px;padding:0 20px;justify-content:center}
+.nav-bar a{display:inline-block;padding:5px 14px;border-radius:16px;font-size:12px;color:var(--dark);text-decoration:none;background:#fff;border:1px solid var(--light);transition:all .2s;white-space:nowrap}
+.nav-bar a:hover{background:var(--red);color:#fff;border-color:var(--red)}
+
+/* Responsive */
+@media(max-width:600px){
+  .cover h1{font-size:26px}
+  .section-title{font-size:20px}
+  .card-grid{grid-template-columns:1fr}
+  .flow{flex-direction:column}
+  .flow-arrow{transform:rotate(90deg)}
+}
+
+/* Print */
+@media print{
+  .nav-bar{display:none}
+  .cover{page-break-after:always}
+  .section{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="nav-bar">
+<div class="nav-inner">
+<a href="#product">一、产品是什么</a>
+<a href="#cases">二、真实案例</a>
+<a href="#policy">三、政策与赔付</a>
+<a href="#sell">四、怎么卖</a>
+<a href="#quickref">五、速查卡</a>
+</div>
+</div>
+
+<!-- Cover -->
+<div class="cover">
+<h1>效果广告 · 客资产品</h1>
+<div class="sub">全员销售培训实战手册</div>
+<div>
+<span class="tag">产品逻辑</span>
+<span class="tag">计费模式</span>
+<span class="tag">真实案例</span>
+<span class="tag">11月政策</span>
+<span class="tag">赔付机制</span>
+<span class="tag">实战话术</span>
+</div>
+<div class="date">2026年11月 · 内部培训资料</div>
+</div>
+
+<div class="container">
+
+<!-- ===================== SECTION 1: PRODUCT ===================== -->
+<div class="section" id="product">
+<div class="section-title">一、产品是什么</div>
+<div class="section-subtitle">客资产品是推广通三大投放模式之一，核心逻辑：用户打了电话/做了预定才算有效客资，才扣费</div>
+
+<!-- 1A: 推广通是什么 -->
+<div class="card">
+<h3>推广通 = 高德地图的效果广告平台</h3>
+<p>商户充值后，可以在以下<b>5个推广位</b>获得曝光：<span class="source-tag">来源：推广通知识库</span></p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">
+<span class="badge badge-red">类目搜索结果页</span>
+<span class="badge badge-red">品牌搜列表</span>
+<span class="badge badge-red">相似好店推荐</span>
+<span class="badge badge-red">搜索目的地附近推荐</span>
+<span class="badge badge-red">导航结束页推荐</span>
+</div>
+<p>贯穿用户"搜索 → 出发 → 到达"全动线。</p>
+</div>
+
+<!-- 1B: 三种模式 -->
+<div class="card">
+<h3>三种投放模式</h3>
+<table class="cmp-table" style="margin-top:10px">
+<thead>
+<tr><th>投放模式</th><th>扣费触发</th><th>适合谁</th><th>参考出价</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="badge badge-gold">CPC 按点击</span></td>
+<td>用户点进店铺</td>
+<td>新店冷启动、日常引流</td>
+<td>1.4~2元/次点击<span class="source-tag">知识库</span></td>
+</tr>
+<tr class="highlight">
+<td><span class="badge badge-red">oCPC 客资</span></td>
+<td>用户打电话/预定留资</td>
+<td>正餐、包席、宴请类门店</td>
+<td>30~50元/条客资（中位37元）<span class="source-tag">知识库</span></td>
+</tr>
+<tr>
+<td><span class="badge badge-green">oCPC-GMV 按成交</span></td>
+<td>团购券核销成交</td>
+<td>有套餐的头部餐饮</td>
+<td>ROI目标2~4倍<span class="source-tag">知识库</span></td>
+</tr>
+</tbody>
+</table>
+<p style="margin-top:10px"><b>组合投放效果更好</b>：双投（客资+CPC）或三投（客资+CPC+交易）相比单投一种模式，曝光+25%、点击率+20%以上、获客成本-15%。<span class="source-tag">来源：推广通知识库</span></p>
+</div>
+
+<!-- 1C: 计费逻辑 -->
+<div class="card">
+<h3>客资模式的计费逻辑</h3>
+<div class="gold-sentence">
+商户设定"我愿意为一条客资花多少钱"（如40元），系统根据这个目标智能调控每次曝光的出价——遇到高概率会打电话的用户多出钱，不太可能行动的少出钱。最终平均每条客资成本接近商户设定的目标价。
+</div>
+<div class="flow" style="margin:16px 0">
+<div class="flow-step">商户设定<br><b>目标客资成本</b></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">系统智能<br><b>动态出价</b></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">用户看到广告<br><b>点击/浏览</b><br><span style="font-size:11px;color:var(--gray)">此时不扣费</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">用户<b>打电话/预定</b><br><span style="font-size:11px;color:var(--green)">触发扣费</span></div>
+</div>
+<p style="font-size:13px;color:var(--gray)">底层实际仍按点击扣费，系统通过智能调控让总成本逼近目标客资价。新计划有<b>3~5天算法学习期</b>，期间成本可能波动，不要手动调整。</p>
+</div>
+
+<!-- 1D: 三重价值 -->
+<div class="card-grid">
+<div class="card" style="border-top:4px solid var(--red)">
+<h3>价值一：花钱更精准</h3>
+<p>传统投放点一次扣一次，不管来的人会不会打电话。客资模式系统自动筛选高意向用户，<b>把预算集中在最可能行动的人身上</b>。没产生客资的曝光和点击不花冤枉钱。</p>
+</div>
+<div class="card" style="border-top:4px solid var(--coral)">
+<h3>价值二：投放更省心</h3>
+<p>设好目标成本，剩下的交给算法。相当于给商户配了一个<b>24小时的智能投放优化师</b>，商户只需做好客资承接（接电话、确认预定）。</p>
+</div>
+<div class="card" style="border-top:4px solid var(--green)">
+<h3>价值三：风险有兜底</h3>
+<p>空号、未接、重复来电等无效客资，<b>平台自动识别、自动赔付红包</b>。每周三到账，单周期赔付上限为当周现金消耗的20%。商户不用申诉。</p>
+</div>
+</div>
+
+<div class="card" style="border-left:4px solid var(--gold)">
+<h3>附加权益：预定入口 + 平台补贴优惠券</h3>
+<p>开通客资后，门店页会自动展示<b>预定入口</b>和<b>平台补贴优惠券</b>（如15元订座券），进一步提升转化率。<span class="source-tag">来源：推广通知识库</span></p>
+<p style="margin-top:16px;font-size:13px;color:var(--gray);font-weight:600">▼ 高德地图App实际展示：门店页"领15元"订座券 + 美食满减扫街券</p>
+<img src="coupon_restaurant_page.png" alt="高德地图门店页：领15元订座专享券 + 美食满减扫街券" style="width:100%;max-width:400px;border-radius:12px;margin:8px 0;box-shadow:0 2px 12px rgba(0,0,0,.12)">
+<p style="margin-top:12px;font-size:13px;color:var(--gray);font-weight:600">▼ 消费者钱包卡券：15元订座专享券 + 2元美食满减扫街券</p>
+<img src="coupon_wallet_page.png" alt="高德地图钱包：订座专享券¥15 + 美食满减扫街券¥2" style="width:100%;max-width:400px;border-radius:12px;margin:8px 0;box-shadow:0 2px 12px rgba(0,0,0,.12)">
+</div>
+
+<!-- 1E: 核心逻辑一句话 -->
+<div class="gold-sentence">
+跟商户解释就一句话："老板，您告诉系统一条客资值多少钱，系统就帮您找最可能打电话、预定的用户。找到了才扣费，找不到不扣。"
+</div>
+</div>
+
+<!-- ===================== SECTION 2: CASES ===================== -->
+<div class="section" id="cases">
+<div class="section-title">二、真实商户案例</div>
+<div class="section-subtitle">以下4个案例均带有"客资"标签，数据来自推广通知识库实际投放数据</div>
+
+<!-- Case 1 -->
+<div class="case-card">
+<span class="case-tag">客资</span>
+<h4>案例1 · 某扩张期连锁品牌（66家门店）</h4>
+<p><b>投放模式</b>：oCPC客资（纯客资投放）</p>
+<p><b>投放策略</b>：系统自动寻找高意向用户，给予3~5天算法学习期，期间不做手动调整。</p>
+<div class="case-metric">
+<div class="metric"><div class="num">116万</div><div class="label">总曝光</div></div>
+<div class="metric"><div class="num">2.9万</div><div class="label">总点击</div></div>
+<div class="metric"><div class="num">576</div><div class="label">有效客资</div></div>
+<div class="metric"><div class="num">9,216</div><div class="label">总花费(元)</div></div>
+<div class="metric"><div class="num" style="color:var(--green)">16元</div><div class="label">单条客资成本</div></div>
+</div>
+<p style="font-size:13px;color:var(--gray)">客资成本仅16元/条，远低于平台建议的30~50元区间。算法学习期后效果持续优化。<span class="source-tag">来源：推广通知识库</span></p>
+</div>
+
+<!-- Case 2 -->
+<div class="case-card">
+<span class="case-tag">客资</span>
+<span class="case-tag" style="background:var(--gold)">CPC双投</span>
+<h4>案例2 · 江浙菜高端餐厅（人均168元，主打包间宴请）</h4>
+<p><b>投放模式</b>：客资 + CPC 双投</p>
+<p><b>投放策略</b>：客资模式抓精准电话客资 + CPC补充基础流量。设置专用电话线路追踪来电数据。利用周边无高端竞品的区位优势。</p>
+<div class="case-metric">
+<div class="metric"><div class="num">2,200</div><div class="label">月花费(元)</div></div>
+<div class="metric"><div class="num">31</div><div class="label">电话客资</div></div>
+<div class="metric"><div class="num">14</div><div class="label">追踪到店</div></div>
+<div class="metric"><div class="num">2万+</div><div class="label">包间营收(元)</div></div>
+<div class="metric"><div class="num" style="color:var(--green)">≈9倍</div><div class="label">投入产出比</div></div>
+</div>
+<p style="font-size:13px;color:var(--gray)">每天仅花100元，撬动2万+包间营收。高客单价商户的客资投放典范。<span class="source-tag">来源：推广通知识库</span></p>
+</div>
+
+<!-- Case 3 -->
+<div class="case-card">
+<span class="case-tag">客资</span>
+<span class="case-tag" style="background:var(--gold)">CPC</span>
+<span class="case-tag" style="background:var(--green)">交易</span>
+<h4>案例3 · 东北大型聚餐餐厅（2~10人套餐）</h4>
+<p><b>投放模式</b>：客资 + CPC + 交易 三投</p>
+<p><b>投放策略</b>：三种模式同时投放。客资出价25~30元（10人套餐/电话预订包间场景），交易ROI目标从3逐步上调至6，CPC补充到店流量。</p>
+<div class="case-metric">
+<div class="metric"><div class="num">+50%</div><div class="label">曝光增长</div></div>
+<div class="metric"><div class="num">+31%</div><div class="label">点击增长</div></div>
+<div class="metric"><div class="num">24</div><div class="label">预定客资</div></div>
+<div class="metric"><div class="num">145</div><div class="label">实际到店</div></div>
+<div class="metric"><div class="num">1,815</div><div class="label">总花费(元)</div></div>
+<div class="metric"><div class="num" style="color:var(--green)">3桌×33人</div><div class="label">大型预定</div></div>
+</div>
+<p style="font-size:13px;color:var(--gray)">不到2000元投入，成功承接多桌大型聚餐预定。三模式组合拳效果显著。<span class="source-tag">来源：推广通知识库</span></p>
+</div>
+
+<!-- Case 4 -->
+<div class="case-card">
+<span class="case-tag">客资</span>
+<span class="case-tag" style="background:var(--gold)">CPC双投</span>
+<h4>案例4 · 韩式烤肉商户（4家线上门店）</h4>
+<p><b>投放模式</b>：客资 + CPC 双投</p>
+<p><b>投放策略</b>：8月全月持续双模式投放。客资出价31元稳定获量，CPC保持基础流量。</p>
+<div class="case-metric">
+<div class="metric"><div class="num">+86%</div><div class="label">曝光增长</div></div>
+<div class="metric"><div class="num">+17%</div><div class="label">点击增长</div></div>
+<div class="metric"><div class="num">58</div><div class="label">有效客资</div></div>
+<div class="metric"><div class="num">31.4元</div><div class="label">客资单价</div></div>
+<div class="metric"><div class="num">2.47%</div><div class="label">点击率</div></div>
+<div class="metric"><div class="num">0.44元</div><div class="label">单次点击</div></div>
+</div>
+<p style="font-size:13px;color:var(--gray)">曝光暴涨86%，客资成本稳定在31.4元，接近平台中位数37元。双模式长期投放的稳定性验证。<span class="source-tag">来源：推广通知识库</span></p>
+</div>
+
+<div class="card" style="border-left:4px solid var(--coral)">
+<h3>从案例中提炼的共性规律</h3>
+<ul style="margin:8px 0 0 20px;line-height:2">
+<li><b>客资成本可控</b>：实际案例中客资单价在16~37元区间，均不超过平台建议的50元上限</li>
+<li><b>双投/三投优于单投</b>：4个案例中有3个是组合投放，曝光和点击增长均在17%~86%</li>
+<li><b>高客单价杠杆最大</b>：案例2人均168元，2200元撬动2万+营收，投入产出比约9倍</li>
+<li><b>算法学习期很关键</b>：案例1明确提到需要3~5天学习期，期间不要手动调整</li>
+</ul>
+</div>
+</div>
+
+<!-- ===================== SECTION 3: POLICY & COMPENSATION ===================== -->
+<div class="section" id="policy">
+<div class="section-title">三、11月政策与赔付机制</div>
+<div class="section-subtitle">新签返点 + 无效赔付，给商户双重保障</div>
+
+<!-- 3A: 11月政策 -->
+<div class="policy-box">
+<h3>11月新签政策（限时30天：2026.11.01 – 11.30）</h3>
+<p><b>适用对象</b>：美食广告新签商户（历史新充值 或 90天无消耗无充值的断约型新签）<span class="source-tag">来源：政策文档</span></p>
+
+<table class="cmp-table" style="margin-top:14px">
+<thead>
+<tr><th>广告充值金额</th><th>基础返点</th><th>客资加码（额外）</th><th>合计最高</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>≥ 5,000元</td>
+<td>15%（上限2,000元/月）</td>
+<td>客资消耗≥100元 → 加返100元红包<br>客资消耗≥300元 → 加返200元红包</td>
+<td><b>最高可达19%</b></td>
+</tr>
+</tbody>
+</table>
+
+<div class="gold-sentence" style="margin-top:14px">
+举例：商户充值5,000元，活动期内客资消耗300元 → 获得基础返点750元 + 加码红包200元 = <b>合计950元，返点率19%</b>
+</div>
+
+<p style="margin-top:10px;font-size:13px;color:var(--gray)">
+发放说明：红包仅用于广告消耗核销，不可提现/转让。有效期90天。消耗按 现金:红包 = 8:2 比例使用。若广告充值用于年费折扣或对赌准入，不予返点。<span class="source-tag">来源：政策文档</span>
+</p>
+</div>
+
+<div class="card">
+<h3>跟商户怎么算这笔账？</h3>
+<div class="gold-sentence" style="border-left-color:var(--green);background:#E8F5E9">
+"老板，现在开通最划算。充5000块，基础返15%就是750。您只要正常投，客资消耗到300块，平台再额外返200红包。等于您手里有950块的广告预算，实际只花了4050。这个活动就这个月有。"
+</div>
+</div>
+
+<!-- 3B: 赔付机制 -->
+<div class="card" style="margin-top:30px;border-top:4px solid var(--red)">
+<h3 style="font-size:20px">无效客资赔付机制</h3>
+<p>2026年9月1日起生效，平台自动识别、自动赔付。<span class="source-tag">来源：赔付规则文档</span></p>
+
+<p style="margin-top:12px"><b>什么是"无效客资"？</b>系统判定的无效计费客资线索，包括但不限于：空号/停机、未接通、用户取消、重复来电（去重）、非目标客户等。</p>
+</div>
+
+<div class="explain-box">
+<div class="term">关键指标：回呼率 和 标注率</div>
+<div class="def">
+<p><b>回呼率</b> = 商户有没有给客资回电话。用户留了电话或预定了，商户是否在规定时间内回拨过去。平台要求<b>回呼率 > 30%</b>。<span class="source-tag">来源：赔付规则文档</span></p>
+<p style="margin-top:10px"><b>整体客资标注率</b> = 商户有没有在后台给每条客资打标签。在广告投放平台的"客资管理"页面，商户需要对每条客资做状态标注（如：有效/无效/到店等）。平台要求<b>标注率 > 30%</b>。<span class="source-tag">来源：赔付规则文档</span></p>
+<p style="margin-top:10px;color:var(--red);font-weight:600">这两个指标直接决定商户能拿到多少赔付。</p>
+</div>
+</div>
+
+<div class="card">
+<h3>赔付比例</h3>
+<table class="cmp-table">
+<thead>
+<tr><th>商户配合情况</th><th>赔付比例</th><th>说明</th></tr>
+</thead>
+<tbody>
+<tr><td><b>回呼率 > 30% 且 标注率 > 30%</b></td><td><b style="color:var(--green)">100%</b></td><td>两项都达标 → 全额赔</td></tr>
+<tr><td>只达标其中一项</td><td><b style="color:var(--gold)">50%</b></td><td>达标一半 → 赔一半</td></tr>
+<tr><td>两项都没达标</td><td><b style="color:var(--red)">0%</b></td><td>不配合 = 不赔</td></tr>
+</tbody>
+</table>
+<div class="gold-sentence" style="margin-top:12px">
+赔付上限：单门店单周赔付金额 ≤ 当周现金消耗的20%<span class="source-tag">来源：赔付规则文档</span>
+</div>
+</div>
+
+<div class="card">
+<h3>赔付节奏与查看路径</h3>
+<div class="flow">
+<div class="flow-step">上周三~本周二<br><b>产生的无效客资</b></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">系统<b>自动识别</b><br>无需商户申请</div>
+<div class="flow-arrow">→</div>
+<div class="flow-step" style="border-color:var(--green);background:#E8F5E9">下周三<br><b>红包自动到账</b></div>
+</div>
+<p style="text-align:center;color:var(--gray);font-size:13px;margin-top:6px">查看路径：广告投放平台 → 转化 → 客资管理<span class="source-tag">来源：赔付规则文档</span></p>
+</div>
+
+<div class="card">
+<h3>跟商户怎么解释赔付？</h3>
+<div class="gold-sentence" style="border-left-color:var(--green);background:#E8F5E9">
+"老板，平台有兜底机制。系统自动识别无效客资——空号、没接通的——每周三自动赔红包到您账户，不用您申请。只要您做到两件事：<b>第一，及时回拨用户电话（回呼率超过30%）；第二，在后台给客资标注状态（标注率超过30%）</b>。两项都做到就全赔，做到一项赔一半，都不做就不赔。"
+</div>
+</div>
+</div>
+
+<!-- ===================== SECTION 4: HOW TO SELL ===================== -->
+<div class="section" id="sell">
+<div class="section-title">四、怎么卖</div>
+<div class="section-subtitle">目标商户 + 作战池优先级 + 实战话术 + 异议处理</div>
+
+<!-- 4A: 目标商户 -->
+<div class="card">
+<h3>哪些商户最适合推客资？</h3>
+<div class="profile-card" style="margin-top:10px">
+<div class="profile-icon">🍽️</div>
+<div class="profile-info">
+<h4>高客单价门店（人均100元起步）</h4>
+<p>每一通电话价值极高，一条客资可能带来数千元营收。客资成本30~50元完全划算。</p>
+</div>
+</div>
+<div class="profile-card">
+<div class="profile-icon">🎊</div>
+<div class="profile-info">
+<h4>具备婚宴/包席/宴请能力的中大型门店</h4>
+<p>天然接受预定场景，用户路径就是"搜索→打电话→预定→到店"，客资模式完美匹配。</p>
+</div>
+</div>
+<div class="profile-card">
+<div class="profile-icon">📞</div>
+<div class="profile-info">
+<h4>看重电话量、视电话为主要效果指标的商家</h4>
+<p>老板每天都在数"今天接了几个订座电话"——他就是客资产品的最佳客户。</p>
+</div>
+</div>
+<div class="profile-card">
+<div class="profile-icon">🏪</div>
+<div class="profile-info">
+<h4>周边无同品类强竞品的门店</h4>
+<p>如案例2的江浙菜餐厅——周边没有高端竞品，客资成本低、转化率高。</p>
+</div>
+</div>
+</div>
+
+<!-- 4B: 作战池 -->
+<div class="card">
+<h3>作战池：你的精准客户清单</h3>
+<p>客资产品的扣费凭证 = 商户的电话量 + 预定量。所以<b>已经拥有高电话量的商户 = 已经有客资习惯 = 最容易转化</b>。</p>
+<table class="cmp-table" style="margin-top:12px">
+<thead>
+<tr><th>优先级</th><th>标准（近90天电话量）</th><th>打法</th></tr>
+</thead>
+<tbody>
+<tr><td><b style="color:var(--red)">P0</b></td><td>≥ 100通</td><td>最优先打！客资习惯最强，转化概率最大</td></tr>
+<tr><td><b style="color:var(--coral)">P1</b></td><td>≥ 50通</td><td>第二批打，配合政策利益点切入</td></tr>
+<tr><td><b style="color:var(--gold)">P2</b></td><td>≥ 20通</td><td>培育型客户，先用CPC打底再引导升级客资</td></tr>
+</tbody>
+</table>
+<p style="margin-top:12px"><a href="https://liuyang0028.github.io/food-sales-proposal/zuozhanchi.html" target="_blank" style="color:var(--red);font-weight:600">👉 访问作战池线上查询系统</a></p>
+</div>
+
+<!-- 4C: 话术 -->
+<div class="card">
+<h3>实战话术：四个场景</h3>
+<p style="color:var(--gray);margin-bottom:14px">每个场景都有"对内理解"和"对客话术"，直接能用。<span class="source-tag">来源：产品文档</span></p>
+
+<div class="script-box">
+<div class="scene">场景一：首次破冰 —— 让商户愿意听你讲</div>
+<div class="dialogue">
+<p>"老板您好，我是负责您门店区域的效果广告顾问。</p>
+<p style="margin-top:6px">这次联系您不是建议您买曝光——而是想帮您把<b>'用户搜到您→看了门店→打电话/预定→到店'</b>这条链路接起来。</p>
+<p style="margin-top:6px">现在很多顾客搜品类、搜商圈，如果页面只有电话没有预定入口，一些不方便打电话的意向客户可能就流失了。</p>
+<p style="margin-top:6px">我建议先帮您<b>免费检查一下门店电话、预定入口和页面信息是否完整</b>，再判断适不适合做小额测试。您今天方便给我5分钟看一下吗？"</p>
+</div>
+</div>
+
+<div class="script-box">
+<div class="scene">场景二：二次跟进 —— 回应"太贵了/没效果"的顾虑</div>
+<div class="dialogue">
+<p>"老板，上次提到的客资方案我又结合您门店情况梳理了一下。</p>
+<p style="margin-top:6px">先说费用——<b>不是先交一大笔钱</b>。您充5000块，平台返您950块红包（11月限时政策），实际到手4050块的广告预算。然后系统按效果扣费——<b>用户打了电话才算一条客资，才扣钱</b>，大概30到50块一条。</p>
+<p style="margin-top:6px">更稳妥的方式是<b>先用小预算跑一轮</b>，同时看曝光、点击、客资、预定和到店。这样我们能判断问题在流量、页面还是跟进，而不是凭感觉追加预算。</p>
+<p style="margin-top:6px">而且平台有<b>无效赔付</b>——空号、没接通这些，系统自动赔红包，不用您操心。您看要不先试试？"</p>
+</div>
+</div>
+
+<div class="script-box">
+<div class="scene">场景三：价值传递 —— 用案例说话</div>
+<div class="dialogue">
+<p>"老板，客资广告的核心不是帮您增加曝光——<b>是帮您把正在找店、有咨询意向的用户直接引导到电话和预定入口</b>。</p>
+<p style="margin-top:6px">我们不看曝光量、不看点击量，就看<b>有没有形成客资、门店有没有及时承接、有没有预定和到店</b>。哪个环节弱就优化哪个环节。</p>
+<p style="margin-top:6px">给您看个真实案例——有家江浙菜餐厅，人均168，主打包间。上个月只花了2200块广告费，来了31个电话、14组到店，包间营收超过2万。<b>投入产出比9倍</b>。"</p>
+</div>
+</div>
+
+<div class="script-box">
+<div class="scene">场景四：推动开通 —— 锁定动作，不纠结效果</div>
+<div class="dialogue">
+<p>"老板，目前影响合作的几个问题我们已经对齐了。现在最关键的不是继续讨论理论效果，而是<b>把门店承接准备好，跑出第一轮真实数据</b>。</p>
+<p style="margin-top:6px">建议今天完成三件事：</p>
+<p>1. <b>开通预定功能</b>（如果还没开的话）</p>
+<p>2. <b>校验联系电话</b>（确保能正常接听）</p>
+<p>3. <b>确定一位客资负责人</b>（谁来接电话、谁来后台标注）</p>
+<p style="margin-top:6px">准备好后我们用小预算启动，首轮重点看有效客资成本和预定到店。如果可以，<b>我现在就协助您把预定入口开起来</b>。"</p>
+</div>
+</div>
+</div>
+
+<!-- 4D: 异议处理 -->
+<div class="card">
+<h3>异议处理：商户常说的5个"不"</h3>
+
+<div class="faq-item">
+<div class="q">❶ "我投过效果广告，没效果"</div>
+<div class="a">"理解您的顾虑。以前效果广告是按点击扣费——用户点了一下就扣钱，不管他会不会打电话。客资模式不一样，<b>只有用户真正打了电话、做了预定才算一条客资，才扣费</b>。而且现在有无效赔付，空号没接通平台自动赔。您先小预算试一轮，看真实数据再决定。"</div>
+</div>
+
+<div class="faq-item">
+<div class="q">❷ "30~50块一条客资太贵了"</div>
+<div class="a">"老板，咱们算一笔账——您门店一桌客人平均消费多少？如果一桌300块，一条客资40块，<b>10条客资花400块，按三成转化来1~2桌客人，就是300~600块营收</b>。而且这是您设定目标成本，系统尽量贴近，不是固定收费。您看那个东北聚餐的案例，客资出价才25~30块。"</div>
+</div>
+
+<div class="faq-item">
+<div class="q">❸ "我自己也能做推广，不需要广告"</div>
+<div class="a">"您说的对，门店自身的口碑和自然流量很重要。但客资广告做的不是替代——<b>是在用户正在搜您这个品类、正在找店的时候，让您的门店排在前面</b>。相当于在最好的时机出现在最合适的人面前。而且现在开通还有15%+的返点，等于平台补贴您获客。"</div>
+</div>
+
+<div class="faq-item">
+<div class="q">❹ "我再考虑考虑"</div>
+<div class="a">"没问题，不过有个时间因素要跟您说——<b>11月的新签政策是限时的</b>，充5000返950，这个月底就截止了。而且现在开通客资的商户还不多，竞争小，系统出价成本低，等于同样的钱能拿到更多客资。您如果有意向，我建议先开通占住政策窗口，后面随时可以调整。"</div>
+</div>
+
+<div class="faq-item">
+<div class="q">❺ "我怎么知道来的电话是不是有效的？"</div>
+<div class="a">"后台有个<b>客资管理</b>页面，每条客资都有记录——谁打的、什么时候打的、来源是什么。您可以对每条客资做标注：有效/无效/重复。系统会根据标注自动识别和赔付。<b>您只需要安排一个人每天花5分钟看一下后台、做标注就行</b>。注意标注率要保持30%以上，不然赔付比例会打折。"</div>
+</div>
+</div>
+</div>
+
+<!-- ===================== SECTION 5: QUICK REF ===================== -->
+<div class="section" id="quickref">
+<div class="section-title">五、一页纸速查卡</div>
+<div class="section-subtitle">截图保存，随时翻看</div>
+
+<div class="quick-ref">
+<h3>客资产品 · 销售速查卡</h3>
+
+<div class="qr-item">
+<strong>一句话介绍：</strong><br>
+"老板，我们新出了一个按效果付费的广告——用户打了您电话、做了预定才算钱，没效果不扣费。无效客资平台还自动赔。"
+</div>
+
+<div class="qr-item">
+<strong>三种模式对比：</strong><br>
+CPC按点击（1.4~2元/次）→ 适合新店引流<br>
+oCPC客资（30~50元/条，中位37元）→ 适合正餐/包席/宴请 ← <b style="color:#F5B041">主推</b><br>
+oCPC-GMV按成交（ROI 2~4倍）→ 适合有套餐的头部
+</div>
+
+<div class="qr-item">
+<strong>5个曝光场景：</strong><br>
+类目搜索结果页 / 品牌搜列表 / 相似好店推荐 / 搜索目的地附近推荐 / 导航结束页推荐
+</div>
+
+<div class="qr-item">
+<strong>11月政策（限时）：</strong><br>
+充5000 → 基础返15%（750元）+ 客资消耗达标加返200元 = 合计950元<br>
+相当于返点率19%，历史最高
+</div>
+
+<div class="qr-item">
+<strong>赔付要点：</strong><br>
+无效客资自动赔 → 每周三到账 → 上限为周消耗的20%<br>
+商户需做到：<b style="color:#F5B041">回呼率>30% + 标注率>30%</b> → 全赔100%<br>
+只做到一项 → 赔50% | 都不做 → 不赔
+</div>
+
+<div class="qr-item">
+<strong>目标商户画像：</strong><br>
+人均100+ / 有包间宴请 / 重电话预定 / 周边无强竞品
+</div>
+
+<div class="qr-item">
+<strong>优先打谁：</strong><br>
+P0（90天≥100通）→ P1（≥50通）→ P2（≥20通）<br>
+电话量越高 = 客资习惯越强 = 转化概率越大
+</div>
+
+<div class="qr-item">
+<strong>组合投放数据：</strong><br>
+双投/三投 vs 单投：曝光+25%、点击率+20%以上、获客成本-15%
+</div>
+
+<div class="qr-item">
+<strong>禁忌：</strong><br>
+不对客说"OCPC"——说"按客资付费的效果广告"<br>
+不承诺固定客资量或ROI——说"小预算先跑数据看效果"
+</div>
+</div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding:36px 20px;color:var(--gray);font-size:13px;border-top:1px solid var(--light);margin-top:36px">
+<p>效果广告 · 客资产品全员培训手册</p>
+<p>2026年11月 · 内部资料</p>
+<p style="margin-top:8px">
+<a href="https://liuyang0028.github.io/food-sales-proposal/zuozhanchi.html" style="color:var(--coral)">作战池查询系统</a> ·
+<a href="https://meishi-onepager.io.alibaba-inc.com/" style="color:var(--coral)">推广通知识库</a>
+</p>
+<p style="margin-top:10px;font-size:11px;color:#BDC3C7">
+数据声明：所有案例数据均来自推广通知识库（meishi-onepager.io.alibaba-inc.com）真实商户投放数据，已做脱敏处理。<br>
+产品政策信息来源于《全站推-oCPC客资线索分享》《效果广告新签·OCPC客资政策》《无效客资赔付规则》三份内部文档。
+</p>
+</div>
+
+</div>
+</body>
+</html>
