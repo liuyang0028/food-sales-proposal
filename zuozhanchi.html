@@ -321,7 +321,13 @@ function showChannel(accessCode) {
   if (!prov) return;
 
   // 追踪访问
-  trackVisit({type: '渠道', accessCode: accessCode, provider: prov.providerName});
+  trackVisit({
+    type: '渠道',
+    accessCode: accessCode,
+    name: prov.providerName || '',
+    team: prov.team || '',
+    pidCount: prov.pidCount || (prov.pids ? prov.pids.length : 0)
+  });
 
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
@@ -484,7 +490,8 @@ function copyPid(pid, btn) {
 const TRACK_CONFIG = {
   apiUrl: 'https://api.jsonbin.io/v3/b/YOUR_BIN_ID',
   apiKey: 'YOUR_API_KEY',
-  enabled: true
+  enabled: true,
+  maxRecords: 5000
 };
 
 function trackVisit(info) {
