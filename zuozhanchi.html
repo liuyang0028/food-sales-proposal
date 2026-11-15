@@ -265920,22 +265920,27 @@ function renderPids() {
 
   const body = document.getElementById('pidBody');
   body.innerHTML = list.map((p, i) => {
-    const repStore = p.storeList && p.storeList[0] ? p.storeList[0].name : '-';
-    const city = p.storeList && p.storeList[0] ? p.storeList[0].city : '';
     const storeCount = p.stores || (p.storeList ? p.storeList.length : 0);
-    return `<tr class="clickable" onclick="toggleRow(${i})">
+    const firstStore = p.storeList && p.storeList[0] ? p.storeList[0] : null;
+    const shopId = firstStore ? (firstStore.shopId || firstStore.poi || '-') : '-';
+    const repStore = firstStore ? firstStore.name : '-';
+    const city = firstStore ? firstStore.city : '';
+    const canExpand = storeCount > 1;
+    const clickAttr = canExpand ? `onclick="toggleRow(${i})"` : '';
+    const expandIcon = canExpand ? '<span style="color:#ccc;margin-right:4px;font-size:10px">▶</span>' : '';
+    return `<tr class="clickable" ${clickAttr}>
       <td style="color:#ccc;font-size:11px">${i+1}</td>
       <td style="font-family:monospace;font-size:12px">
-        ${p.pid}
-        <button onclick="event.stopPropagation();copyPid('${p.pid}',this)" style="margin-left:6px;padding:2px 8px;font-size:11px;border:1px solid #e8e0d4;border-radius:4px;background:#fff;cursor:pointer;color:#666" title="复制PID">复制</button>
+        ${expandIcon}${p.pid}
+        <button onclick="event.stopPropagation();copyPid('${p.pid}',this)" style="margin-left:8px;padding:3px 10px;font-size:11px;font-weight:600;border:1.5px solid #C0392B;border-radius:4px;background:#FFF5F0;cursor:pointer;color:#C0392B;transition:all .15s" title="复制PID" onmouseover="this.style.background='#C0392B';this.style.color='#fff'" onmouseout="this.style.background='#FFF5F0';this.style.color='#C0392B'">复制ID</button>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">门店ID: ${shopId}</div>
       </td>
       <td><span class="badge ${p.level.toLowerCase()}">${p.level}</span></td>
       <td><b>${p.phone.toLocaleString()}</b></td>
-      <td>${storeCount}</td>
+      <td>${storeCount}${canExpand ? ' <span style="color:#ccc;font-size:10px">可展开</span>' : ''}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${repStore}">${repStore}</td>
       <td>${city}</td>
-    </tr>
-    <tr class="detail-row" id="detail-${i}"><td colspan="7">${renderStores(p.storeList)}</td></tr>`;
+    </tr>${canExpand ? `<tr class="detail-row" id="detail-${i}"><td colspan="7">${renderStores(p.storeList)}</td></tr>` : ''}`;
   }).join('');
   document.getElementById('pidCount').textContent = `共 ${list.length} 个 PID`;
 }
@@ -265962,13 +265967,15 @@ function toggleRow(i) {
 // ── Copy PID ──
 function copyPid(pid, btn) {
   navigator.clipboard.writeText(pid).then(() => {
-    btn.textContent = '已复制';
-    btn.style.color = '#27AE60';
+    btn.textContent = '✓ 已复制';
+    btn.style.color = '#fff';
     btn.style.borderColor = '#27AE60';
+    btn.style.background = '#27AE60';
     setTimeout(() => {
-      btn.textContent = '复制';
-      btn.style.color = '#666';
-      btn.style.borderColor = '#e8e0d4';
+      btn.textContent = '复制ID';
+      btn.style.color = '#C0392B';
+      btn.style.borderColor = '#C0392B';
+      btn.style.background = '#FFF5F0';
     }, 1500);
   }).catch(() => {
     // Fallback for older browsers
@@ -265978,8 +265985,8 @@ function copyPid(pid, btn) {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    btn.textContent = '已复制';
-    setTimeout(() => btn.textContent = '复制', 1500);
+    btn.textContent = '✓ 已复制';
+    setTimeout(() => btn.textContent = '复制ID', 1500);
   });
 }
 
