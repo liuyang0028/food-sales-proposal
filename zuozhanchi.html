@@ -232,9 +232,14 @@ function doLogin() {
 function showError(msg, matches) {
   const el = document.getElementById('loginError');
   if (msg) {
-    el.textContent = msg;
+    el.innerHTML = `<div style="padding:20px;background:#FFF0F0;border:2px solid #C0392B;border-radius:12px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">😕</div>
+      <div style="font-size:16px;color:#C0392B;font-weight:600;margin-bottom:8px">未找到您所查询的信息</div>
+      <div style="font-size:13px;color:#888">请检查输入的访问码或工号是否正确</div>
+    </div>`;
     el.style.display = 'block';
     document.getElementById('resultsPanel') && (document.getElementById('resultsPanel').style.display = 'none');
+    document.getElementById('quickPanel') && (document.getElementById('quickPanel').style.display = 'none');
   } else {
     el.style.display = 'none';
   }
@@ -287,6 +292,9 @@ function showTelesales(empId) {
   const emp = DATA.telesales[empId];
   if (!emp) return;
 
+  // 追踪访问
+  trackVisit({type: '电销', empId: empId, name: emp.realName || emp.name, team: emp.l5});
+
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
   document.getElementById('providerSection').style.display = 'none';
@@ -311,6 +319,9 @@ function showTelesales(empId) {
 function showChannel(accessCode) {
   const prov = DATA.channel[accessCode];
   if (!prov) return;
+
+  // 追踪访问
+  trackVisit({type: '渠道', accessCode: accessCode, provider: prov.providerName, manager: prov.manager});
 
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('mainPage').style.display = 'block';
@@ -402,7 +413,10 @@ function renderPids() {
     const storeCount = p.stores || (p.storeList ? p.storeList.length : 0);
     return `<tr class="clickable" onclick="toggleRow(${i})">
       <td style="color:#ccc;font-size:11px">${i+1}</td>
-      <td style="font-family:monospace;font-size:12px">${p.pid}</td>
+      <td style="font-family:monospace;font-size:12px">
+        ${p.pid}
+        <button onclick="event.stopPropagation();copyPid('${p.pid}',this)" style="margin-left:6px;padding:2px 8px;font-size:11px;border:1px solid #e8e0d4;border-radius:4px;background:#fff;cursor:pointer;color:#666" title="复制PID">复制</button>
+      </td>
       <td><span class="badge ${p.level.toLowerCase()}">${p.level}</span></td>
       <td><b>${p.phone.toLocaleString()}</b></td>
       <td>${storeCount}</td>
@@ -417,7 +431,7 @@ function renderPids() {
 function renderStores(stores) {
   if (!stores || !stores.length) return '<div style="padding:12px;color:#ccc">无门店明细</div>';
   return `<table class="store-tbl"><thead><tr>
-    <th>门店ID</th><th>门店名称</th><th>城市</th><th>区县</th><th>品类</th><th>电话量</th><th>广告状态</th>
+    <th>门店ID</th><th>门店名称</th><th>城市</th><th>区县</th><th>品类</th><th>电话量</th>
   </tr></thead><tbody>${stores.map(s => `<tr>
     <td style="font-family:monospace;font-size:11px">${s.shopId||s.poi||'-'}</td>
     <td>${s.name||'-'}</td>
@@ -425,7 +439,6 @@ function renderStores(stores) {
     <td>${s.district||'-'}</td>
     <td>${s.cat2||'-'}</td>
     <td><b>${s.phone?s.phone.toLocaleString():'-'}</b></td>
-    <td>${s.adStatus||'-'}</td>
   </tr>`).join('')}</tbody></table>`;
 }
 
@@ -433,6 +446,54 @@ function toggleRow(i) {
   const row = document.getElementById('detail-' + i);
   row.classList.toggle('show');
 }
+
+// ── Copy PID ──
+function copyPid(pid, btn) {
+  navigator.clipboard.writeText(pid).then(() => {
+    btn.textContent = '已复制';
+    btn.style.color = '#27AE60';
+    btn.style.borderColor = '#27AE60';
+    setTimeout(() => {
+      btn.textContent = '复制';
+      btn.style.color = '#666';
+      btn.style.borderColor = '#e8e0d4';
+    }, 1500);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = pid;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '已复制';
+    setTimeout(() => btn.textContent = '复制', 1500);
+  });
+}
+
+// ── Visitor Tracking ──
+function trackVisit(info) {
+  // 使用localStorage记录访问（同一浏览器只记录一次/天）
+  const today = new Date().toISOString().slice(0, 10);
+  const key = 'visit_' + today;
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+  
+  // 记录访问信息到控制台（实际部署时可替换为API调用）
+  console.log('[访问记录]', {
+    time: new Date().toISOString(),
+    ...info
+  });
+  
+  // 如有后端API，取消下面的注释并配置API_URL
+  // fetch(API_URL + '/track', {
+  //   method: 'POST',
+  //   headers: {'Content-Type': 'application/json'},
+  //   body: JSON.stringify({time: new Date().toISOString(), ...info})
+  // });
+}
+
+
 </script>
 </body>
 </html>
