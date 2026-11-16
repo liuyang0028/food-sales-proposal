@@ -135,9 +135,6 @@ tr.expanded{background:#FFF8F0}
     <div class="provider-header">
       <h2 id="provName"></h2>
       <div class="provider-meta">
-        <span>区域：<b id="provRegion"></b></span>
-        <span>渠道经理：<b id="provMgr"></b></span>
-        <span>员工数：<b id="provEmpCnt"></b></span>
         <span>总 PID：<b id="provPidCnt"></b></span>
       </div>
     </div>
@@ -265862,9 +265859,6 @@ function showChannel(accessCode) {
 
   // Provider header
   document.getElementById('provName').textContent = prov.providerName;
-  document.getElementById('provRegion').textContent = prov.region || '-';
-  
-  document.getElementById('provEmpCnt').textContent = prov.employeeCount;
   document.getElementById('provPidCnt').textContent = prov.totalPids;
 
   // Aggregate stats
