@@ -265989,9 +265989,113 @@ function toggleRow(i) {
   row.classList.toggle('show');
 }
 
+// ── 剪贴板：长数字列（PID 16位、门店ID 28位）必须强制按文本导入 ──
+// Excel/ WPS 粘贴纯文本时会把纯数字单元格转成数值：16位以上会折叠成科学计数法
+// 并且只保留15位有效数字，门店ID会直接丢精度。因此同时写入 text/html 通道，
+// 用 mso-number-format:'@' 让 Excel 按文本单元格导入；纯文本通道用 ="..." 兜底。
+const CLIP_ID_COLS = new Set([3, 6]);       // 明细表列序：3=PID, 6=门店ID
+const CLIP_TEXT_STYLE = ' style="mso-number-format:\'@\'"';
+const CLIP_LONG_NUM = /^[0-9]{16,}$/;       // 超过 Excel 15 位有效数字的纯数字串
+
+function escHtml(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildClipboardHtml(matrix, textCols) {
+  const rows = matrix.map(r => '<tr>' + r.map((v, i) => {
+    const style = textCols.has(i) ? CLIP_TEXT_STYLE : '';
+    return '<td' + style + '>' + escHtml(v) + '</td>';
+  }).join('') + '</tr>').join('');
+  return '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table>' + rows + '</table></body></html>';
+}
+
+function buildClipboardText(matrix, formulaCols) {
+  return matrix.map((r, ri) => r.map((v, i) => {
+    const s = String(v == null ? '' : v);
+    // 表头保持原样；只有超过 15 位有效数字的长数字才用 ="..." 包成文本公式，
+    // 其余（短数字、含非数字的字符串）原样输出，粘到 IM / 文本编辑器不会有公式噪声
+    if (ri > 0 && formulaCols.has(i) && CLIP_LONG_NUM.test(s)) return '="' + s.replace(/"/g, '""') + '"';
+    return s;
+  }).join('\t')).join('\n');
+}
+
+function legacyCopy(text, onDone) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  onDone();
+}
+
+// execCommand('copy') + 捕获 copy 事件：一次写入 text/html 与 text/plain 两个通道。
+// 不依赖剪贴板 API 权限，且能保住带 mso-number-format 的 HTML 通道，作为首选兜底。
+function copyViaEvent(html, text, onDone) {
+  let ok = false;
+  const handler = (e) => {
+    try {
+      e.clipboardData.setData('text/html', html);
+      e.clipboardData.setData('text/plain', text);
+      e.preventDefault();
+    } catch (err) {}
+  };
+  document.addEventListener('copy', handler, true);
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  document.removeEventListener('copy', handler, true);
+  if (ok) { onDone(); return true; }
+  return false;
+}
+
+// matrix: 二维数组；htmlCols: HTML通道中强制文本格式的列；plainCols: 纯文本通道中用 ="..." 包裹的列
+function writeClipboard(matrix, htmlCols, plainCols, onDone) {
+  const html = buildClipboardHtml(matrix, htmlCols);
+  const text = buildClipboardText(matrix, plainCols);
+  const htmlBlob = new Blob([html], { type: 'text/html' });
+  const textBlob = new Blob([text], { type: 'text/plain' });
+
+  const plainFallback = () => {
+    // 最后兜底才只写纯文本（内容里已带 ="..." 包装，Excel 仍会按文本单元格导入）
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onDone).catch(() => legacyCopy(text, onDone));
+    } else {
+      legacyCopy(text, onDone);
+    }
+  };
+
+  // 1) 标准剪贴板 API：必须用数组形式（单个 ClipboardItem 在部分 Chrome 版本会抛
+  //    "The object must have a callable @@iterator property"）
+  if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+    try {
+      const item = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob });
+      navigator.clipboard.write([item]).then(onDone).catch(() => {
+        // 2) 事件兜底：仍保留 HTML 通道
+        if (copyViaEvent(html, text, onDone)) return;
+        plainFallback();
+      });
+      return;
+    } catch (e) {
+      if (copyViaEvent(html, text, onDone)) return;
+      plainFallback();
+      return;
+    }
+  }
+
+  // 2) 事件兜底：仍保留 HTML 通道
+  if (copyViaEvent(html, text, onDone)) return;
+  plainFallback();
+}
+
 // ── Copy PID ──
 function copyPid(pid, btn) {
-  navigator.clipboard.writeText(pid).then(() => {
+  const pidStr = String(pid == null ? '' : pid);
+  const onDone = () => {
     btn.textContent = '✓ 已复制';
     btn.style.color = '#fff';
     btn.style.borderColor = '#27AE60';
@@ -266002,34 +266106,27 @@ function copyPid(pid, btn) {
       btn.style.borderColor = '#C0392B';
       btn.style.background = '#FFF5F0';
     }, 1500);
-  }).catch(() => {
-    // Fallback for older browsers
-    const ta = document.createElement('textarea');
-    ta.value = pid;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    btn.textContent = '✓ 已复制';
-    setTimeout(() => btn.textContent = '复制ID', 1500);
-  });
+  };
+  // 纯文本通道保持干净（便于粘到IM），HTML通道让Excel按文本单元格导入
+  writeClipboard([[pidStr]], new Set([0]), new Set(), onDone);
 }
 
-// ── Copy All Detail to Clipboard (Tab分隔，可直接粘贴到Excel) ──
+// ── Copy All Detail to Clipboard (可直接粘贴到Excel，长数字列按文本导入) ──
 function copyAllDetail() {
   if (!currentPids || currentPids.length === 0) { alert('无数据可复制'); return; }
 
-  // Tab-separated header
+  // 列序：0姓名/服务商 1工号/访问码 2团队 3PID 4P级 5近90天PID电话量 6门店ID
+  //      7POI 8门店名称 9城市 10区县 11二级类目 12门店电话量 13广告状态
   const headers = ['姓名/服务商','工号/访问码','团队','PID','P级','近90天PID电话量','门店ID','POI','门店名称','城市','区县','二级类目','门店电话量','广告状态'];
-  const rows = [headers.join('\t')];
+  const matrix = [headers];
 
   currentPids.forEach(p => {
     const stores = p.storeList || [];
     if (stores.length === 0) {
-      rows.push([currentPersonLabel, currentPersonId, currentTeamLabel, p.pid, p.level, p.phone||0, '','','','','','','',''].join('\t'));
+      matrix.push([currentPersonLabel, currentPersonId, currentTeamLabel, p.pid, p.level, p.phone||0, '','','','','','','','']);
     } else {
       stores.forEach(s => {
-        rows.push([
+        matrix.push([
           currentPersonLabel,
           currentPersonId,
           currentTeamLabel,
@@ -266044,35 +266141,22 @@ function copyAllDetail() {
           s.cat2 || '',
           s.phone || 0,
           s.adStatus || ''
-        ].join('\t'));
+        ]);
       });
     }
   });
 
-  const text = rows.join('\n');
-
-  // Copy to clipboard
-  navigator.clipboard.writeText(text).then(() => {
+  const onDone = () => {
     const btn = document.getElementById('downloadBtn');
     const orig = btn.innerHTML;
     btn.innerHTML = '✓ 已复制 ' + currentPids.length + ' 个PID';
     btn.style.background = '#27AE60';
     setTimeout(() => { btn.innerHTML = orig; }, 2000);
-  }).catch(() => {
-    // Fallback: textarea + execCommand
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    const btn = document.getElementById('downloadBtn');
-    const orig = btn.innerHTML;
-    btn.innerHTML = '✓ 已复制 ' + currentPids.length + ' 个PID';
-    setTimeout(() => { btn.innerHTML = orig; }, 2000);
-  });
+  };
+
+  // HTML通道：PID、门店ID 用 mso-number-format:'@' 强制文本单元格
+  // 纯文本通道：同样两列用 ="..." 兜底，防止任何只读纯文本的场景被转成数值
+  writeClipboard(matrix, CLIP_ID_COLS, CLIP_ID_COLS, onDone);
 }
 
 // ── Visitor Tracking (使用jsonbin.io） ──
